@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import FixtureCard from "./components/FixtureCard";
 
 export default function Home() {
-  const [homeScore, setHomeScore] = useState("");
-  const [awayScore, setAwayScore] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   return (
@@ -32,67 +31,47 @@ export default function Home() {
         </h2>
       </div>
 
-
       <section className="mt-10">
         <h2 className="text-2xl font-bold text-yellow-400">
           ⚽ Upcoming Fixtures
         </h2>
 
-        <div className="mt-4 bg-gray-900 rounded-xl p-4">
-          <p className="font-bold">
-            Kaizer Chiefs vs Orlando Pirates
-          </p>
+        <FixtureCard
+          homeTeam="Kaizer Chiefs"
+          awayTeam="Orlando Pirates"
+        />
 
-          <div className="flex gap-3 mt-3 items-center">
+        <FixtureCard
+          homeTeam="Mamelodi Sundowns"
+          awayTeam="Stellenbosch FC"
+        />
 
-            <input
-              className="w-16 bg-black border border-yellow-400 rounded p-2 text-center"
-              placeholder="0"
-              value={homeScore}
-              onChange={(e) => setHomeScore(e.target.value)}
-            />
-
-            <span className="text-xl">
-              -
-            </span>
-
-            <input
-              className="w-16 bg-black border border-yellow-400 rounded p-2 text-center"
-              placeholder="0"
-              value={awayScore}
-              onChange={(e) => setAwayScore(e.target.value)}
-            />
-
-          </div>
-        </div>
+        <FixtureCard
+          homeTeam="Cape Town City"
+          awayTeam="Sekhukhune United"
+        />
       </section>
-
 
       <button
         onClick={() => setSubmitted(true)}
         className="mt-10 w-full bg-yellow-400 text-black font-bold py-3 rounded-xl"
       >
-        Submit Predictions
+        Submit All Predictions
       </button>
-
 
       {submitted && (
         <div className="mt-6 bg-gray-900 rounded-xl p-4 text-center">
-
           <p className="text-gray-400">
-            Your Prediction
+            Predictions submitted successfully!
           </p>
 
-          <p className="text-2xl font-bold text-yellow-400 mt-2">
-            Kaizer Chiefs {homeScore} - {awayScore} Orlando Pirates
+          <p className="text-yellow-400 font-bold mt-2">
+            Good luck this round! ⚽🏆
           </p>
-
         </div>
       )}
 
-
       <section className="mt-10">
-
         <h2 className="text-2xl font-bold text-yellow-400">
           🏆 Leaderboard
         </h2>
@@ -102,10 +81,9 @@ export default function Home() {
           <p>🥈 Player 2 ........ 12 pts</p>
           <p>🥉 Player 3 ........ 10 pts</p>
         </div>
-
       </section>
-
 
     </main>
   );
 }
+

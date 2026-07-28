@@ -1,4 +1,7 @@
-import type { FirstTeamToScoreType } from "../lib/enums";
+import type {
+  FirstTeamToScoreType,
+  PredictionStatusType,
+} from "../lib/enums";
 
 export interface Prediction {
   id: string;
@@ -14,6 +17,8 @@ export interface Prediction {
   firstTeamToScore: FirstTeamToScoreType;
 
   submittedAt: string;
+
+  status: PredictionStatusType;
 
   locked: boolean;
 

@@ -17,6 +17,13 @@ export const FirstTeamToScore = {
   NONE: "None",
 } as const;
 
+export const PredictionStatus = {
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  LOCKED: "Locked",
+  SCORED: "Scored",
+} as const;
+
 export type CompetitionId =
   typeof CompetitionIds[keyof typeof CompetitionIds];
 
@@ -25,3 +32,6 @@ export type FixtureStatusType =
 
 export type FirstTeamToScoreType =
   typeof FirstTeamToScore[keyof typeof FirstTeamToScore];
+
+export type PredictionStatusType =
+  typeof PredictionStatus[keyof typeof PredictionStatus];

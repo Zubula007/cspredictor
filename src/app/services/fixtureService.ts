@@ -1,25 +1,44 @@
 import fixtureRepository from "../repositories/fixtureRepository";
 import type { Fixture } from "../types/fixture";
+import type { FirstTeamToScoreType } from "../lib/enums";
 
 class FixtureService {
-  getFixtures(): Fixture[] {
+  getAll(): Fixture[] {
+    return fixtureRepository.getAll();
+  }
+
+  getPublished(): Fixture[] {
     return fixtureRepository.getPublished();
   }
 
-  getFixture(id: string): Fixture | undefined {
-    return fixtureRepository.getById(id);
-  }
-
-  getFixturesByCompetition(competitionId: string): Fixture[] {
+  getByCompetition(competitionId: string): Fixture[] {
     return fixtureRepository.getByCompetition(competitionId);
   }
 
-  getFixturesByRound(round: number): Fixture[] {
+  getById(id: string): Fixture | undefined {
+    return fixtureRepository.getById(id);
+  }
+
+  getByRound(round: number): Fixture[] {
     return fixtureRepository.getByRound(round);
   }
 
-  getFixturesByStreak(streak: number): Fixture[] {
+  getByStreak(streak: number): Fixture[] {
     return fixtureRepository.getByStreak(streak);
+  }
+
+  updateResult(
+    fixtureId: string,
+    homeScore: number,
+    awayScore: number,
+    firstTeamToScore: FirstTeamToScoreType
+  ): Fixture | undefined {
+    return fixtureRepository.updateResult(
+      fixtureId,
+      homeScore,
+      awayScore,
+      firstTeamToScore
+    );
   }
 }
 

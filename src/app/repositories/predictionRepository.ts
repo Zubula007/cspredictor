@@ -21,6 +21,30 @@ class PredictionRepository {
   save(prediction: Prediction): void {
     predictions.push(prediction);
   }
+
+  updateScoredPrediction(
+    predictionId: string,
+    points: number,
+    correctResult: boolean,
+    exactScore: boolean,
+    correctFTTS: boolean
+  ): Prediction | undefined {
+    const prediction = predictions.find(
+      (item) => item.id === predictionId
+    );
+
+    if (!prediction) {
+      return undefined;
+    }
+
+    prediction.points = points;
+    prediction.correctResult = correctResult;
+    prediction.exactScore = exactScore;
+    prediction.correctFTTS = correctFTTS;
+    prediction.scored = true;
+
+    return prediction;
+  }
 }
 
 const predictionRepository = new PredictionRepository();

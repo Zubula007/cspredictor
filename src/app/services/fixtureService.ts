@@ -1,6 +1,15 @@
 import fixtureRepository from "../repositories/fixtureRepository";
+import predictionService, {
+  type ScoreFixtureSummary,
+} from "./predictionService";
+
 import type { Fixture } from "../types/fixture";
 import type { FirstTeamToScoreType } from "../lib/enums";
+
+export type PublishResultResponse = {
+  fixture: Fixture;
+  summary: ScoreFixtureSummary;
+};
 
 class FixtureService {
   getAll(): Fixture[] {
@@ -46,7 +55,7 @@ class FixtureService {
     homeScore: number,
     awayScore: number,
     firstTeamToScore: FirstTeamToScoreType
-  ): Fixture | undefined {
+  ): PublishResultResponse | undefined {
     const fixture = fixtureRepository.updateResult(
       fixtureId,
       homeScore,
@@ -60,7 +69,12 @@ class FixtureService {
 
     fixture.status = "Completed";
 
-    return fixture;
+    const summary = predictionService.scoreFixture(fixture);
+
+    return {
+      fixture,
+      summary,
+    };
   }
 }
 

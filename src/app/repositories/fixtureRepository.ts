@@ -1,5 +1,6 @@
 import fixtures from "../data/fixtures";
 import type { Fixture } from "../types/fixture";
+import type { FirstTeamToScoreType } from "../lib/enums";
 
 class FixtureRepository {
   getAll(): Fixture[] {
@@ -25,7 +26,31 @@ class FixtureRepository {
   }
 
   getByStreak(streak: number): Fixture[] {
-    return fixtures.filter((fixture) => fixture.streak === streak);
+    return fixtures.filter(
+      (fixture) => fixture.streak === streak
+    );
+  }
+
+  updateResult(
+    fixtureId: string,
+    homeScore: number,
+    awayScore: number,
+    firstTeamToScore: FirstTeamToScoreType
+  ): Fixture | undefined {
+
+    const fixture = fixtures.find(
+      (item) => item.id === fixtureId
+    );
+
+    if (!fixture) {
+      return undefined;
+    }
+
+    fixture.homeScore = homeScore;
+    fixture.awayScore = awayScore;
+    fixture.firstTeamToScore = firstTeamToScore;
+
+    return fixture;
   }
 }
 

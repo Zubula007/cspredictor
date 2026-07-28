@@ -66,17 +66,15 @@ export default function AdminResultsPage() {
   }, [homeScore, awayScore]);
 
   useEffect(() => {
-    // Only one valid answer - select it automatically
     if (availableFTTS.length === 1) {
       setFirstTeamToScore(availableFTTS[0].value);
       return;
     }
 
-    // Both teams scored - admin must choose
     setFirstTeamToScore("");
   }, [availableFTTS]);
 
-  function saveResult() {
+  function publishResult() {
     if (!selectedFixtureId) {
       return;
     }
@@ -86,21 +84,21 @@ export default function AdminResultsPage() {
       return;
     }
 
-    fixtureService.updateResult(
+    fixtureService.publishResult(
       selectedFixtureId,
       homeScore,
       awayScore,
       firstTeamToScore
     );
 
-    setMessage("Result saved successfully ✅");
+    setMessage("Result published successfully ✅");
   }
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-xl rounded-xl border border-yellow-500 bg-zinc-900 p-6">
         <h1 className="mb-6 text-2xl font-bold text-yellow-400">
-          Admin Result Entry
+          Admin Result Review & Publish
         </h1>
 
         <label className="mb-2 block">
@@ -197,16 +195,16 @@ export default function AdminResultsPage() {
         </div>
 
         <button
-          onClick={saveResult}
+          onClick={publishResult}
           className="mt-6 w-full rounded bg-yellow-500 p-3 font-bold text-black"
         >
-          Save Result
+          Publish Result
         </button>
 
         {message && (
           <p
             className={`mt-4 text-center ${
-              message.includes("successfully")
+              message.includes("published")
                 ? "text-green-400"
                 : "text-red-400"
             }`}

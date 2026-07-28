@@ -40,6 +40,28 @@ class FixtureService {
       firstTeamToScore
     );
   }
+
+  publishResult(
+    fixtureId: string,
+    homeScore: number,
+    awayScore: number,
+    firstTeamToScore: FirstTeamToScoreType
+  ): Fixture | undefined {
+    const fixture = fixtureRepository.updateResult(
+      fixtureId,
+      homeScore,
+      awayScore,
+      firstTeamToScore
+    );
+
+    if (!fixture) {
+      return undefined;
+    }
+
+    fixture.status = "Completed";
+
+    return fixture;
+  }
 }
 
 const fixtureService = new FixtureService();

@@ -29,4 +29,6 @@ export interface Prediction {
   correctResult?: boolean;
 
   correctFTTS?: boolean;
+
+  scored?: boolean;
 }

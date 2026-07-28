@@ -1,5 +1,9 @@
 import predictionRepository from "../repositories/predictionRepository";
+
+import { scorePrediction } from "../lib/scoringEngine";
+
 import type { Prediction } from "../types/prediction";
+import type { Fixture } from "../types/fixture";
 
 class PredictionService {
   getPredictions(): Prediction[] {
@@ -16,6 +20,22 @@ class PredictionService {
 
   savePrediction(prediction: Prediction): void {
     predictionRepository.save(prediction);
+  }
+
+  scorePrediction(
+    prediction: Prediction,
+    fixture: Fixture
+  ) {
+    return scorePrediction({
+      predictedHomeScore: prediction.homeScore,
+      predictedAwayScore: prediction.awayScore,
+      predictedFirstTeamToScore: prediction.firstTeamToScore,
+
+      officialHomeScore: fixture.homeScore ?? 0,
+      officialAwayScore: fixture.awayScore ?? 0,
+      officialFirstTeamToScore:
+        fixture.firstTeamToScore!,
+    });
   }
 }
 

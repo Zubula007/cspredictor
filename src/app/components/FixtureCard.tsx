@@ -5,20 +5,23 @@ import FTTSSelector, {
   FTTSOption,
 } from "./FTTSSelector";
 
+import PredictionCountdown from "./PredictionCountdown";
 type FixtureCardProps = {
   competition: string;
   competitionLogo?: string;
 
-  date: string;
+matchDate: string;
+displayDate: string;
   kickOff?: string;
+
+  status: string;
 
   homeTeam: string;
   awayTeam: string;
 
   homeLogo?: string;
   awayLogo?: string;
-
-  userPrediction: {
+userPrediction: {
   homeScore: number;
   awayScore: number;
   scoreSelected: boolean;
@@ -32,21 +35,25 @@ onPredictionChange: (
   firstTeamToScore: FTTSOption
 ) => void;
 
-  locked?: boolean;
+locked?: boolean;
+incomplete?: boolean;
 };
 
 export default function FixtureCard({
   competition,
   competitionLogo,
-  date,
+  matchDate,
+displayDate,
   kickOff,
+  status,
   homeTeam,
   awayTeam,
   homeLogo,
   awayLogo,
   userPrediction,
-  onPredictionChange,
-  locked = false,
+onPredictionChange,
+locked = false,
+incomplete = false,
 }: FixtureCardProps) {
 
  const updateScore = (
@@ -85,6 +92,12 @@ export default function FixtureCard({
     firstTeamToScore
   );
 };
+const interactionLocked =
+  locked ||
+  status === "Postponed" ||
+  status === "Live" ||
+  status === "Completed" ||
+  status === "Cancelled";
  
 
   const increaseHome = () => {
@@ -196,7 +209,13 @@ export default function FixtureCard({
 
   return (
 
-    <div className="rounded-2xl border border-yellow-500 bg-black p-6 shadow-xl">
+    <div
+  className={`rounded-2xl border p-6 shadow-xl ${
+    incomplete
+      ? "border-red-500 bg-red-950/20"
+      : "border-yellow-500 bg-black"
+  }`}
+>
 
       {/* Competition */}
 
@@ -219,20 +238,48 @@ export default function FixtureCard({
         </h2>
 
         <p className="mt-2 text-sm text-gray-300">
-          📅 {date}
+          📅 {displayDate}
         </p>
 
-        {kickOff && (
+      {kickOff && (
+  <>
+    <p className="text-sm text-gray-300">
+      🕒 Kick-off: {kickOff}
+    </p>
 
-          <p className="text-sm text-gray-300">
-            🕒 Kick-off: {kickOff}
-          </p>
-
-        )}
+    <PredictionCountdown
+      matchDate={matchDate}
+      kickOff={kickOff}
+    />
+  </>
+)}
+<div className="mt-3 flex justify-center">
+  <span
+    className={`rounded-full px-4 py-1 text-xs font-bold uppercase tracking-wide ${
+      status === "Scheduled"
+        ? "bg-green-600 text-white"
+        : status === "Postponed"
+        ? "bg-yellow-500 text-black"
+        : status === "Live"
+        ? "bg-red-600 text-white"
+        : status === "Completed"
+        ? "bg-blue-600 text-white"
+        : status === "Cancelled"
+        ? "bg-gray-600 text-white"
+        : "bg-zinc-700 text-white"
+    }`}
+  >
+    {status === "Scheduled" && "🟢 Scheduled"}
+    {status === "Postponed" && "🟡 Postponed"}
+    {status === "Live" && "🔴 Live"}
+    {status === "Completed" && "✅ Full Time"}
+    {status === "Cancelled" && "⚫ Cancelled"}
+  </span>
+</div>
 
       </div>
 
-      <div className="grid grid-cols-3 items-center gap-6">
+      <div className="grid grid-cols-3 items-center gap-3 md:gap-6">
 
         {/* HOME */}
 
@@ -241,16 +288,16 @@ export default function FixtureCard({
           {homeLogo && (
 
             <Image
-              src={homeLogo}
-              alt={homeTeam}
-              width={72}
-              height={72}
-              className="mb-3"
-            />
+  src={homeLogo}
+  alt={homeTeam}
+  width={72}
+  height={72}
+  className="mb-1 h-12 w-12 object-contain md:mb-2 md:h-[72px] md:w-[72px]"
+/>
 
           )}
 
-          <p className="text-center font-semibold text-white">
+          <p className="text-center text-xs font-semibold text-white md:text-base">
             {homeTeam}
           </p>
 
@@ -258,26 +305,26 @@ export default function FixtureCard({
 
         {/* SCORE */}
 
-        <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center justify-center gap-3 md:gap-8">
 
           <div className="flex flex-col items-center gap-2">
 
             <button
               onClick={increaseHome}
-              disabled={locked}
-              className="h-10 w-10 rounded-full bg-yellow-500 text-2xl font-bold text-black transition hover:scale-105 disabled:opacity-40"
+              disabled={interactionLocked}
+              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
             >
               +
             </button>
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-2xl font-bold text-black">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-xl font-bold text-black md:h-14 md:w-14 md:text-2xl">
               {userPrediction.homeScore}
             </div>
 
             <button
               onClick={decreaseHome}
-              disabled={locked}
-              className="h-10 w-10 rounded-full bg-yellow-500 text-2xl font-bold text-black transition hover:scale-105 disabled:opacity-40"
+              disabled={interactionLocked}
+              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
             >
               −
             </button>
@@ -292,20 +339,20 @@ export default function FixtureCard({
 
             <button
               onClick={increaseAway}
-              disabled={locked}
-              className="h-10 w-10 rounded-full bg-yellow-500 text-2xl font-bold text-black transition hover:scale-105 disabled:opacity-40"
+              disabled={interactionLocked}
+              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
             >
               +
             </button>
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-2xl font-bold text-black">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-xl font-bold text-black md:h-14 md:w-14 md:text-2xl">
               {userPrediction.awayScore}
             </div>
 
             <button
               onClick={decreaseAway}
-              disabled={locked}
-              className="h-10 w-10 rounded-full bg-yellow-500 text-2xl font-bold text-black transition hover:scale-105 disabled:opacity-40"
+              disabled={interactionLocked}
+              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
             >
               −
             </button>
@@ -320,17 +367,17 @@ export default function FixtureCard({
 
           {awayLogo && (
 
-            <Image
-              src={awayLogo}
-              alt={awayTeam}
-              width={72}
-              height={72}
-              className="mb-3"
-            />
+           <Image
+  src={awayLogo}
+  alt={awayTeam}
+  width={72}
+  height={72}
+  className="mb-1 h-12 w-12 object-contain md:mb-2 md:h-[72px] md:w-[72px]"
+/> 
 
           )}
 
-          <p className="text-center font-semibold text-white">
+          <p className="text-center text-xs font-semibold text-white md:text-base">
             {awayTeam}
           </p>
 
@@ -355,35 +402,58 @@ value={userPrediction.firstTeamToScore}
 
         onChange={handleFTTSChange}
 
-        disabled={locked}
+        disabled={interactionLocked}
 
       />
 
       {/* STATUS */}
 
-      <div className="mt-6 border-t border-yellow-500/20 pt-4 text-center">
+<div className="mt-6 border-t border-yellow-500/20 pt-4 text-center">
 
-        {locked ? (
+  {status === "Postponed" ? (
 
-          <p className="text-sm font-semibold text-red-400">
-            🔒 Prediction Locked
-          </p>
+    <p className="text-sm font-semibold text-yellow-400">
+      🟡 Predictions Unavailable
+    </p>
 
-        ) : (
+  ) : status === "Cancelled" ? (
 
-          <p className="text-sm font-semibold text-green-400">
-            ✅ Predictions Open
-          </p>
+    <p className="text-sm font-semibold text-gray-400">
+      ⚫ Predictions Closed
+    </p>
 
-        )}
+  ) : locked || status === "Live" || status === "Completed" ? (
 
-      </div>
+    <p className="text-sm font-semibold text-red-400">
+      🔒 Editing Disabled
+    </p>
 
+  ) : (
+
+    <p className="text-sm font-semibold text-green-400">
+      ✅ Predictions Open
+    </p>
+
+  )}
+
+</div>
     </div>
 
   );
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

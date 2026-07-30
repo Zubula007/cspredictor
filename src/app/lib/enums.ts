@@ -7,8 +7,10 @@ export const CompetitionIds = {
 
 export const FixtureStatus = {
   SCHEDULED: "Scheduled",
+  POSTPONED: "Postponed",
   LIVE: "Live",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 } as const;
 
 export const FirstTeamToScore = {
@@ -35,3 +37,4 @@ export type FirstTeamToScoreType =
 
 export type PredictionStatusType =
   typeof PredictionStatus[keyof typeof PredictionStatus];
+

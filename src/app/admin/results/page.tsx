@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import fixtureService from "../../services/fixtureService";
+import predictionService from "../../services/predictionService";
+
 import {
   FirstTeamToScore,
   type FirstTeamToScoreType,
@@ -23,7 +25,8 @@ export default function AdminResultsPage() {
 
   const [message, setMessage] = useState("");
 
-  const selectedFixture = fixtureService.getById(selectedFixtureId);
+  const selectedFixture =
+    fixtureService.getById(selectedFixtureId);
 
   const availableFTTS = useMemo(() => {
     if (homeScore === 0 && awayScore === 0) {
@@ -80,7 +83,9 @@ export default function AdminResultsPage() {
     }
 
     if (!firstTeamToScore) {
-      setMessage("Please select the First Team To Score.");
+      setMessage(
+        "Please select the First Team To Score."
+      );
       return;
     }
 
@@ -91,12 +96,39 @@ export default function AdminResultsPage() {
       firstTeamToScore
     );
 
-    setMessage("Result published successfully ✅");
+    const updatedFixture =
+      fixtureService.getById(selectedFixtureId);
+
+    if (!updatedFixture) {
+      setMessage(
+        "Unable to load updated fixture."
+      );
+      return;
+    }
+
+    const scoringSummary =
+      predictionService.scoreFixture(
+        updatedFixture
+      );
+
+    setMessage(
+      `Result published successfully ✅ ${scoringSummary.predictionsScored} predictions scored`
+    );
+console.log(
+  "Scored fixture:",
+  updatedFixture.id
+);
+
+console.log(
+  "All predictions:",
+  predictionService.getPredictions()
+);
   }
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-xl rounded-xl border border-yellow-500 bg-zinc-900 p-6">
+
         <h1 className="mb-6 text-2xl font-bold text-yellow-400">
           Admin Result Review & Publish
         </h1>
@@ -134,14 +166,18 @@ export default function AdminResultsPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label>Home Score</label>
+            <label>
+              Home Score
+            </label>
 
             <input
               type="number"
               min={0}
               value={homeScore}
               onChange={(e) => {
-                setHomeScore(Number(e.target.value));
+                setHomeScore(
+                  Number(e.target.value)
+                );
                 setMessage("");
               }}
               className="mt-2 w-full rounded bg-white p-2 text-black"
@@ -149,14 +185,18 @@ export default function AdminResultsPage() {
           </div>
 
           <div>
-            <label>Away Score</label>
+            <label>
+              Away Score
+            </label>
 
             <input
               type="number"
               min={0}
               value={awayScore}
               onChange={(e) => {
-                setAwayScore(Number(e.target.value));
+                setAwayScore(
+                  Number(e.target.value)
+                );
                 setMessage("");
               }}
               className="mt-2 w-full rounded bg-white p-2 text-black"
@@ -165,15 +205,20 @@ export default function AdminResultsPage() {
         </div>
 
         <div className="mt-6">
-          <label>First Team To Score</label>
+          <label>
+            First Team To Score
+          </label>
 
           <select
             className="mt-2 w-full rounded bg-white p-2 text-black"
             value={firstTeamToScore}
             onChange={(e) => {
               setFirstTeamToScore(
-                e.target.value as FirstTeamToScoreType | ""
+                e.target.value as
+                  | FirstTeamToScoreType
+                  | ""
               );
+
               setMessage("");
             }}
           >
@@ -204,7 +249,7 @@ export default function AdminResultsPage() {
         {message && (
           <p
             className={`mt-4 text-center ${
-              message.includes("published")
+              message.includes("successfully")
                 ? "text-green-400"
                 : "text-red-400"
             }`}
@@ -212,7 +257,9 @@ export default function AdminResultsPage() {
             {message}
           </p>
         )}
+
       </div>
     </main>
   );
 }
+

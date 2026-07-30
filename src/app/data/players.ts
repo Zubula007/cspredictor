@@ -24,21 +24,14 @@ const players: Player[] = [
   },
   {
     id: "P004",
-    displayName: "Lwazi",
-    joinedAt: "2026-07-01",
-    active: true,
-    isAdmin: false,
-  },
-  {
-    id: "P005",
     displayName: "Pro",
     joinedAt: "2026-07-01",
     active: true,
     isAdmin: false,
   },
   {
-    id: "P006",
-    displayName: "Mfundo",
+    id: "P005",
+    displayName: "Ta Luzz",
     joinedAt: "2026-07-01",
     active: true,
     isAdmin: false,

@@ -1,6 +1,7 @@
 import predictionRepository from "../repositories/predictionRepository";
 
 import { scorePrediction } from "../lib/scoringEngine";
+import { PredictionStatus } from "../lib/enums";
 
 import type { Prediction } from "../types/prediction";
 import type { Fixture } from "../types/fixture";
@@ -28,18 +29,58 @@ class PredictionService {
     predictionRepository.save(prediction);
   }
 
+  savePlayerPrediction(
+    playerId: string,
+    fixtureId: string,
+    homeScore: number,
+    awayScore: number,
+    firstTeamToScore: Prediction["firstTeamToScore"]
+  ): void {
+    this.savePrediction({
+      id: `${playerId}-${fixtureId}`,
+
+      playerId,
+
+      fixtureId,
+
+      homeScore,
+
+      awayScore,
+
+      firstTeamToScore,
+
+      submittedAt: new Date().toISOString(),
+
+      status: PredictionStatus.SUBMITTED,
+
+      locked: false,
+
+      points: 0,
+
+      exactScore: false,
+
+      correctResult: false,
+
+      correctFTTS: false,
+    });
+  }
+
   scorePrediction(
     prediction: Prediction,
     fixture: Fixture
   ) {
     return scorePrediction({
       predictedHomeScore: prediction.homeScore,
+
       predictedAwayScore: prediction.awayScore,
+
       predictedFirstTeamToScore:
         prediction.firstTeamToScore,
 
       officialHomeScore: fixture.homeScore ?? 0,
+
       officialAwayScore: fixture.awayScore ?? 0,
+
       officialFirstTeamToScore:
         fixture.firstTeamToScore!,
     });
@@ -50,12 +91,18 @@ class PredictionService {
   ): ScoreFixtureSummary {
     const predictions =
       predictionRepository.getByFixture(fixture.id);
+console.log("Scoring fixture:", fixture.id);
+console.log("Predictions found:", predictions);
 
     let predictionsScored = 0;
+
     let highestScore = 0;
+
     let totalPoints = 0;
 
     for (const prediction of predictions) {
+console.log("Prediction:", prediction);
+console.log("prediction.scored =", prediction.scored);
       if (prediction.scored) {
         continue;
       }
@@ -84,7 +131,9 @@ class PredictionService {
 
     return {
       predictionsScored,
+
       highestScore,
+
       averageScore:
         predictionsScored === 0
           ? 0
@@ -101,3 +150,5 @@ class PredictionService {
 const predictionService = new PredictionService();
 
 export default predictionService;
+
+

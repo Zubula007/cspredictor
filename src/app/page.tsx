@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react"; 
+import { useEffect, useRef, useState } from "react"; 
 
 import PlayerForm from "./components/PlayerForm";
 import FixtureCard from "./components/FixtureCard";
@@ -9,8 +9,16 @@ import ConfirmationModal from "./components/ConfirmationModal";
 import fixtures from "./data/fixtures";
 import badges from "./data/badges";
 import competitions from "./data/competitions";
+import predictionService from "./services/predictionService";
+import playerRepository from "./repositories/playerRepository";
+
+import { PredictionStatus } from "./lib/enums";
+import { isFixtureLocked } from "./lib/predictionLock";
+
+import type { Prediction as SavedPrediction } from "./types/prediction";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
+const UI_PREDICTIONS_KEY = "csp-ui-predictions";
 
 type Prediction = {
   homeTeam: string;
@@ -24,11 +32,13 @@ type Prediction = {
 export default function Home() {
 
   const [playerName, setPlayerName] = useState("");
- const [submitted, setSubmitted] = useState(false);
+const [submitted, setSubmitted] = useState(false);
 
-const [submittedAt, setSubmittedAt] = useState<string | null>(null); 
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [error, setError] = useState("");
+const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+const [showConfirmation, setShowConfirmation] = useState(false);
+const [error, setError] = useState("");
+const [showIncomplete, setShowIncomplete] = useState(false);
+const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [predictions, setPredictions] = useState<Prediction[]>(
 
@@ -118,23 +128,53 @@ const [submittedAt, setSubmittedAt] = useState<string | null>(null);
     prediction.firstTeamToScore === null
 ); 
 
-    if (incompletePrediction) {
+   if (incompletePrediction) {
 
-      setError(
-        "Please complete all scores and select First Team To Score for every fixture."
-      );
+  setShowIncomplete(true);
 
-      return;
+  setError(
+    "Please complete all scores and select First Team To Score for every fixture."
+  );
 
-    }
+  return;
 
-    setError("");
+} 
 
-    setShowConfirmation(true);
+    setShowIncomplete(false);
+
+setError("");
+
+setShowConfirmation(true);
 
   };
 
   const confirmSubmission = () => {
+  const player =
+    playerRepository.getByDisplayName(playerName.trim());
+
+  if (!player) {
+    setError(
+      "Player not found. Please contact the league administrator."
+    );
+
+    setShowConfirmation(false);
+
+    return;
+  }
+
+  predictions.forEach((prediction, index) => {
+    predictionService.savePlayerPrediction(
+      player.id,
+      fixtures[index].id,
+      prediction.homeScore,
+      prediction.awayScore,
+      prediction.firstTeamToScore === "HOME"
+  ? "Home"
+  : prediction.firstTeamToScore === "AWAY"
+  ? "Away"
+  : "None"
+    );
+  });
 
   const now = new Date();
 
@@ -150,9 +190,15 @@ const [submittedAt, setSubmittedAt] = useState<string | null>(null);
 
   setSubmittedAt(formatted);
 
-  localStorage.setItem("csp-submitted", "true");
+  localStorage.setItem(
+    "csp-submitted",
+    "true"
+  );
 
-  localStorage.setItem("csp-submittedAt", formatted);
+  localStorage.setItem(
+    "csp-submittedAt",
+    formatted
+  );
 
   setShowConfirmation(false);
 
@@ -165,7 +211,7 @@ const [submittedAt, setSubmittedAt] = useState<string | null>(null);
 ).length; 
 useEffect(() => {
   const savedPlayer = localStorage.getItem("csp-player");
-  const savedPredictions = localStorage.getItem("csp-predictions");
+  const savedPredictions = localStorage.getItem(UI_PREDICTIONS_KEY);
   const savedSubmitted = localStorage.getItem("csp-submitted");
   const savedSubmittedAt = localStorage.getItem("csp-submittedAt");
 
@@ -194,9 +240,9 @@ useEffect(() => {
   localStorage.setItem("csp-player", playerName);
 
   localStorage.setItem(
-    "csp-predictions",
-    JSON.stringify(predictions)
-  );
+  UI_PREDICTIONS_KEY,
+  JSON.stringify(predictions)
+);
 }, [playerName, predictions]);
 
   return (
@@ -207,11 +253,9 @@ useEffect(() => {
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-2xl">
 
-          <h1 className="text-center text-5xl font-extrabold text-yellow-400">
-
-            🏆 Championship Score Predictor
-
-          </h1>
+          <h1 className="text-center text-3xl font-extrabold text-yellow-400 sm:text-4xl md:text-5xl">
+  🏆 Championship Score Predictor
+</h1>
 
           <p className="mt-3 text-center text-xl text-gray-300">
 
@@ -225,21 +269,21 @@ useEffect(() => {
 
           </p>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-4">
+         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4"> 
 
-            <div className="rounded-xl bg-zinc-900 p-4 text-center">
+            <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
               <p className="text-xs uppercase text-gray-400">
                 League Code
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-yellow-400">
+              <p className="mt-2 text-xl font-bold text-yellow-400 md:text-2xl">
                 CSP26
               </p>
 
             </div>
 
-            <div className="rounded-xl bg-zinc-900 p-4 text-center">
+            <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
               <p className="text-xs uppercase text-gray-400">
                 Competition
@@ -251,7 +295,7 @@ useEffect(() => {
 
             </div>
 
-            <div className="rounded-xl bg-zinc-900 p-4 text-center">
+            <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
               <p className="text-xs uppercase text-gray-400">
                 Round
@@ -263,13 +307,13 @@ useEffect(() => {
 
             </div>
 
-            <div className="rounded-xl bg-zinc-900 p-4 text-center">
+            <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
               <p className="text-xs uppercase text-gray-400">
                 Predictions
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-green-400">
+              <p className="mt-2 text-xl font-bold text-green-400 md:text-2xl">
 
                 {completedPredictions}/{fixtures.length}
 
@@ -299,28 +343,39 @@ useEffect(() => {
                 item.id === fixture.competitionId
 
             );
+const locked = isFixtureLocked(
+  fixture.matchDate,
+  fixture.kickOff
+);
 
             return (
 
-              <FixtureCard
+  <div
+    key={fixture.id}
+    ref={(el) => {
+      fixtureRefs.current[index] = el;
+    }}
+  >
+    <FixtureCard
+  competition={
+    competition?.name ??
+    fixture.competitionId
+  }
 
-                key={fixture.id}
+  competitionLogo={
+    competition?.logo
+  }
 
-                competition={
-                  competition?.name ??
-                  fixture.competitionId
-                }
+  matchDate={fixture.matchDate}
+displayDate={fixture.displayDate}
 
-                competitionLogo={
-                  competition?.logo
-                }
+  kickOff={fixture.kickOff}
 
-                date={fixture.matchDate}
+  status={fixture.status}
 
-                kickOff={fixture.kickOff}
+locked={locked}
 
-                homeTeam={fixture.homeTeam}
-
+homeTeam={fixture.homeTeam}
                 awayTeam={fixture.awayTeam}
 
                 homeLogo={
@@ -347,7 +402,14 @@ useEffect(() => {
 
 }} 
 
-                onPredictionChange={
+                incomplete={
+  showIncomplete &&
+  (
+    !predictions[index].scoreSelected ||
+    predictions[index].firstTeamToScore === null
+  )
+} 
+onPredictionChange={
 
   (
     homeScore,
@@ -373,12 +435,12 @@ useEffect(() => {
 
 }
 
+                  />
+  </div>
 
-              />
+  );
 
-            );
-
-          })}
+})}
 
         </div>
 
@@ -459,16 +521,15 @@ useEffect(() => {
 
     )}
 
-    <div className="mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-
-      <p className="text-center text-sm text-yellow-200">
-
-        ✏️ You may continue editing your predictions until the prediction deadline.
-        Any changes you make will be saved automatically.
-
-      </p>
-
-    </div>
+   <div className="mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+  <p className="text-center text-sm text-yellow-200">
+    ⏰ You may continue editing your predictions until{" "}
+    <span className="font-bold text-yellow-400">
+      30 minutes before kick-off
+    </span>
+    . Any changes you make will be saved automatically until the prediction lock activates.
+  </p>
+</div> 
 
   </div>
 
@@ -515,3 +576,17 @@ useEffect(() => {
   );
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

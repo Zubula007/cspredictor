@@ -13,8 +13,22 @@ export interface Fixture {
 
   streak: number;
 
+  /**
+   * ISO date used by the application.
+   * Example: 2026-08-01
+   */
   matchDate: string;
 
+  /**
+   * Friendly date shown to players.
+   * Example: Saturday, 1 August 2026
+   */
+  displayDate: string;
+
+  /**
+   * 24-hour kick-off time.
+   * Example: 18:00
+   */
   kickOff: string;
 
   homeTeam: string;

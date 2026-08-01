@@ -6,7 +6,7 @@ import PlayerForm from "./components/PlayerForm";
 import FixtureCard from "./components/FixtureCard";
 import ConfirmationModal from "./components/ConfirmationModal";
 
-import fixtures from "./data/fixtures";
+import fixtureService from "./services/fixtureService";
 import badges from "./data/badges";
 import competitions from "./data/competitions";
 import predictionService from "./services/predictionService";
@@ -16,6 +16,7 @@ import { PredictionStatus } from "./lib/enums";
 import { isFixtureLocked } from "./lib/predictionLock";
 
 import type { Prediction as SavedPrediction } from "./types/prediction";
+import leaderboardService from "./services/leaderboardService";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
@@ -38,9 +39,17 @@ const [submittedAt, setSubmittedAt] = useState<string | null>(null);
 const [showConfirmation, setShowConfirmation] = useState(false);
 const [error, setError] = useState("");
 const [showIncomplete, setShowIncomplete] = useState(false);
+const [leaderboard, setLeaderboard] = useState(
+  leaderboardService.getLeaderboard()
+);
 const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+const [mounted, setMounted] = useState(false);
 
-  const [predictions, setPredictions] = useState<Prediction[]>(
+  const [fixtures, setFixtures] = useState(
+  fixtureService.getAll()
+);
+const [predictions, setPredictions] = useState<Prediction[]>(
 
     fixtures.map((fixture) => ({
   homeTeam: fixture.homeTeam,
@@ -123,9 +132,23 @@ const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
     }
 
    const incompletePrediction = predictions.some(
-  (prediction) =>
-    !prediction.scoreSelected ||
-    prediction.firstTeamToScore === null
+  (prediction, index) => {
+    const fixture = fixtures[index];
+
+    // Ignore postponed and cancelled fixtures
+    if (
+      fixture.status === "Postponed" ||
+      fixture.status === "Cancelled"
+    ) {
+      return false;
+    }
+
+    
+return (
+      !prediction.scoreSelected ||
+      prediction.firstTeamToScore === null
+    );
+  }
 ); 
 
    if (incompletePrediction) {
@@ -133,8 +156,8 @@ const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
   setShowIncomplete(true);
 
   setError(
-    "Please complete all scores and select First Team To Score for every fixture."
-  );
+  "Please complete all scheduled fixtures before submitting your predictions."
+);
 
   return;
 
@@ -204,12 +227,31 @@ setShowConfirmation(true);
 
 };
 
- const completedPredictions = predictions.filter(
-  (prediction) =>
-    prediction.scoreSelected &&
-    prediction.firstTeamToScore !== null
+ const availableFixtures = fixtures.filter(
+  (fixture) =>
+    fixture.status !== "Postponed" &&
+    fixture.status !== "Cancelled"
+).length;
+
+const completedPredictions = predictions.filter(
+  (prediction, index) => {
+    const fixture = fixtures[index];
+
+    if (
+      fixture.status === "Postponed" ||
+      fixture.status === "Cancelled"
+    ) {
+      return false;
+    }
+
+    return (
+      prediction.scoreSelected &&
+      prediction.firstTeamToScore !== null
+    );
+  }
 ).length; 
 useEffect(() => {
+setFixtures(fixtureService.getAll());
   const savedPlayer = localStorage.getItem("csp-player");
   const savedPredictions = localStorage.getItem(UI_PREDICTIONS_KEY);
   const savedSubmitted = localStorage.getItem("csp-submitted");
@@ -234,20 +276,34 @@ useEffect(() => {
   if (savedSubmittedAt) {
     setSubmittedAt(savedSubmittedAt);
   }
+setMounted(true);
 }, []);
 
 useEffect(() => {
   localStorage.setItem("csp-player", playerName);
 
   localStorage.setItem(
-  UI_PREDICTIONS_KEY,
-  JSON.stringify(predictions)
-);
+    UI_PREDICTIONS_KEY,
+    JSON.stringify(predictions)
+  );
+
+  setLeaderboard(
+    leaderboardService.getLeaderboard()
+  );
 }, [playerName, predictions]);
+useEffect(() => {
+  setLeaderboard(
+    leaderboardService.getLeaderboard()
+  );
+}, [submitted]);
 
-  return (
+if (!mounted) {
+  return null;
+}
 
-    <main className="min-h-screen bg-black px-6 py-10 text-white">
+return (
+
+  <main className="min-h-screen bg-black px-6 py-10 text-white">
 
       <div className="mx-auto max-w-5xl">
 
@@ -315,7 +371,7 @@ useEffect(() => {
 
               <p className="mt-2 text-xl font-bold text-green-400 md:text-2xl">
 
-                {completedPredictions}/{fixtures.length}
+                {completedPredictions}/{availableFixtures}
 
               </p>
 
@@ -343,10 +399,13 @@ useEffect(() => {
                 item.id === fixture.competitionId
 
             );
-const locked = isFixtureLocked(
-  fixture.matchDate,
-  fixture.kickOff
-);
+const locked =
+  fixture.status !== "Completed"
+    ? isFixtureLocked(
+        fixture.matchDate,
+        fixture.kickOff
+      )
+    : true;
 
             return (
 
@@ -373,6 +432,10 @@ displayDate={fixture.displayDate}
 
   status={fixture.status}
 
+result={{
+  homeScore: fixture.homeScore ?? 0,
+  awayScore: fixture.awayScore ?? 0,
+}}
 locked={locked}
 
 homeTeam={fixture.homeTeam}
@@ -404,6 +467,8 @@ homeTeam={fixture.homeTeam}
 
                 incomplete={
   showIncomplete &&
+  fixture.status !== "Postponed" &&
+  fixture.status !== "Cancelled" &&
   (
     !predictions[index].scoreSelected ||
     predictions[index].firstTeamToScore === null
@@ -537,27 +602,84 @@ onPredictionChange={
 
         <section className="mt-12">
 
-          <h2 className="mb-4 text-2xl font-bold text-yellow-400">
+  <h2 className="mb-6 text-2xl font-bold text-yellow-400">
+    🏆 Round 1 Leaderboard
+  </h2>
 
-            🏆 Leaderboard
+  <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6">
 
-          </h2>
+   {leaderboard.length === 0 ? (
 
-          <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6">
+  <p className="text-center text-gray-400">
+    No scores available yet.
+  </p>
 
-            <div className="flex justify-between">
+) : (
 
-              <span>🥇 Player 1</span>
+  <div className="space-y-3">
 
-              <span className="font-bold text-yellow-400">
-                15 pts
-              </span>
+    {leaderboard.map((entry, index) => (
 
-            </div>
+  <div
+    key={entry.player.id}
+    className="flex items-center justify-between rounded-lg bg-black p-4"
+  >
 
-          </div>
+    <div className="flex items-center gap-3">
 
-        </section>
+      <span className="text-xl font-bold text-yellow-400">
+
+        {index === 0
+          ? "🥇"
+          : index === 1
+          ? "🥈"
+          : index === 2
+          ? "🥉"
+          : `${index + 1}.`}
+
+      </span>
+
+      <span className="font-semibold text-white">
+        {entry.player.displayName}
+      </span>
+
+    </div>
+
+        <div className="text-right">
+
+  <p className="text-lg font-bold text-green-400">
+    {entry.totalPoints} pts
+  </p>
+
+  <div className="mt-1 flex gap-2 text-xs">
+
+    <span className="rounded bg-green-700 px-2 py-1">
+      ✅ {entry.correctResults}
+    </span>
+
+    <span className="rounded bg-yellow-600 px-2 py-1 text-black font-bold">
+      🎯 {entry.exactScores}
+    </span>
+
+    <span className="rounded bg-blue-700 px-2 py-1">
+      ⚽ {entry.correctFTTS}
+    </span>
+
+  </div>
+
+</div>
+
+      </div>
+
+    ))}
+
+  </div>
+
+)} 
+
+  </div>
+
+</section>
 
 <ConfirmationModal
   isOpen={showConfirmation}
@@ -576,6 +698,9 @@ onPredictionChange={
   );
 
 }
+
+
+
 
 
 

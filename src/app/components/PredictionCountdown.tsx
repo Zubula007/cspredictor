@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { getCountdownToLock } from "../lib/countdown";
 
 type PredictionCountdownProps = {
@@ -13,11 +12,16 @@ export default function PredictionCountdown({
   matchDate,
   kickOff,
 }: PredictionCountdownProps) {
-  const [countdown, setCountdown] = useState(
-    getCountdownToLock(matchDate, kickOff)
-  );
+  const [mounted, setMounted] = useState(false);
+  const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     const updateCountdown = () => {
       setCountdown(getCountdownToLock(matchDate, kickOff));
     };
@@ -27,7 +31,17 @@ export default function PredictionCountdown({
     const interval = setInterval(updateCountdown, 60000);
 
     return () => clearInterval(interval);
-  }, [matchDate, kickOff]);
+  }, [mounted, matchDate, kickOff]);
+
+  if (!mounted) {
+    return (
+      <div className="mt-2 text-center">
+        <p className="font-semibold text-yellow-400">
+          ⏳ Loading...
+        </p>
+      </div>
+    );
+  }
 
   const locked = countdown === "Locked";
 

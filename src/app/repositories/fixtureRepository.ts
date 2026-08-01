@@ -2,31 +2,70 @@ import fixtures from "../data/fixtures";
 import type { Fixture } from "../types/fixture";
 import type { FirstTeamToScoreType } from "../lib/enums";
 
+const STORAGE_KEY = "cspredictor-fixtures";
+
 class FixtureRepository {
+  private fixtures: Fixture[];
+
+  constructor() {
+    this.fixtures = this.loadFixtures();
+  }
+
+  private loadFixtures(): Fixture[] {
+    if (typeof window === "undefined") {
+      return [...fixtures];
+    }
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (saved) {
+      return JSON.parse(saved);
+    }
+
+    return [...fixtures];
+  }
+
+  private saveFixtures() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(this.fixtures)
+    );
+  }
+
   getAll(): Fixture[] {
-    return fixtures;
+    return this.fixtures;
   }
 
   getPublished(): Fixture[] {
-    return fixtures.filter((fixture) => fixture.published);
+    return this.fixtures.filter(
+      (fixture) => fixture.published
+    );
   }
 
   getByCompetition(competitionId: string): Fixture[] {
-    return fixtures.filter(
+    return this.fixtures.filter(
       (fixture) => fixture.competitionId === competitionId
     );
   }
 
   getById(id: string): Fixture | undefined {
-    return fixtures.find((fixture) => fixture.id === id);
+    return this.fixtures.find(
+      (fixture) => fixture.id === id
+    );
   }
 
   getByRound(round: number): Fixture[] {
-    return fixtures.filter((fixture) => fixture.round === round);
+    return this.fixtures.filter(
+      (fixture) => fixture.round === round
+    );
   }
 
   getByStreak(streak: number): Fixture[] {
-    return fixtures.filter(
+    return this.fixtures.filter(
       (fixture) => fixture.streak === streak
     );
   }
@@ -38,7 +77,7 @@ class FixtureRepository {
     firstTeamToScore: FirstTeamToScoreType
   ): Fixture | undefined {
 
-    const fixture = fixtures.find(
+    const fixture = this.fixtures.find(
       (item) => item.id === fixtureId
     );
 
@@ -49,6 +88,10 @@ class FixtureRepository {
     fixture.homeScore = homeScore;
     fixture.awayScore = awayScore;
     fixture.firstTeamToScore = firstTeamToScore;
+    fixture.status = "Completed";
+    fixture.published = true;
+
+    this.saveFixtures();
 
     return fixture;
   }

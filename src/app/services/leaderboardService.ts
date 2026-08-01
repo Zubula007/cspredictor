@@ -3,6 +3,7 @@ import predictionRepository from "../repositories/predictionRepository";
 import type { Player } from "../types/player";
 
 export interface LeaderboardEntry {
+  rank: number;
   player: Player;
   totalPoints: number;
   exactScores: number;
@@ -14,14 +15,16 @@ class LeaderboardService {
   getLeaderboard(): LeaderboardEntry[] {
     const players = playerRepository.getActivePlayers();
     const predictions = predictionRepository.getAll();
-console.log("Leaderboard predictions:", predictions);
 
-    const leaderboard: LeaderboardEntry[] = players.map((player) => {
+    console.log("Leaderboard predictions:", predictions);
+
+    const leaderboard = players.map((player) => {
       const playerPredictions = predictions.filter(
         (prediction) => prediction.playerId === player.id
       );
 
       return {
+        rank: 0,
         player,
         totalPoints: playerPredictions.reduce(
           (sum, prediction) => sum + (prediction.points ?? 0),
@@ -39,13 +42,15 @@ console.log("Leaderboard predictions:", predictions);
       };
     });
 
-    return leaderboard.sort(
-      (a, b) => b.totalPoints - a.totalPoints
-    );
+    return leaderboard
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      }));
   }
 }
 
 const leaderboardService = new LeaderboardService();
 
 export default leaderboardService;
-

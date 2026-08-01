@@ -3,7 +3,7 @@ import type {
   PredictionStatusType,
 } from "../lib/enums";
 
-export interface Prediction {
+interface Prediction {
   id: string;
 
   playerId: string;
@@ -32,3 +32,6 @@ export interface Prediction {
 
   scored?: boolean;
 }
+
+export default Prediction;
+export type { Prediction };

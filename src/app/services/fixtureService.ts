@@ -1,3 +1,5 @@
+"use client";
+
 import fixtureRepository from "../repositories/fixtureRepository";
 import predictionService, {
   type ScoreFixtureSummary,
@@ -36,6 +38,18 @@ class FixtureService {
     return fixtureRepository.getByStreak(streak);
   }
 
+
+  updateFixture(
+    fixtureId: string,
+    updates: Partial<Fixture>
+  ): Fixture | undefined {
+    return fixtureRepository.updateFixture(
+      fixtureId,
+      updates
+    );
+  }
+
+
   updateResult(
     fixtureId: string,
     homeScore: number,
@@ -50,12 +64,14 @@ class FixtureService {
     );
   }
 
+
   publishResult(
     fixtureId: string,
     homeScore: number,
     awayScore: number,
     firstTeamToScore: FirstTeamToScoreType
   ): PublishResultResponse | undefined {
+
     const fixture = fixtureRepository.updateResult(
       fixtureId,
       homeScore,

@@ -220,6 +220,31 @@ const totalPoints =
       : correctResult
       ? 3 + (correctFTTS ? 1 : 0)
       : 0;
+let performanceTitle = "";
+let performanceEmoji = "";
+let performanceStars = "";
+
+if (totalPoints === 6) {
+  performanceTitle = "Perfect Prediction";
+  performanceEmoji = "🏆";
+  performanceStars = "★★★★★";
+} else if (totalPoints === 5) {
+  performanceTitle = "Exact Score";
+  performanceEmoji = "🎯";
+  performanceStars = "★★★★★";
+} else if (totalPoints === 4) {
+  performanceTitle = "Great Prediction";
+  performanceEmoji = "🥈";
+  performanceStars = "★★★★☆";
+} else if (totalPoints === 3) {
+  performanceTitle = "Correct Result";
+  performanceEmoji = "👍";
+  performanceStars = "★★★☆☆";
+} else {
+  performanceTitle = "Better Luck Next Time";
+  performanceEmoji = "❌";
+  performanceStars = "☆☆☆☆☆";
+}
 
   return (
     <div
@@ -411,50 +436,76 @@ const totalPoints =
           <div className="mt-5 border-t border-green-800 pt-4">
 
   <h4 className="mb-2 text-center font-semibold text-yellow-400">
-    Your Prediction
-  </h4>
+  Your Prediction
+</h4>
 
-  <div className="text-center text-xl font-bold text-white">
-    {userPrediction.homeScore} - {userPrediction.awayScore}
-  </div>
-
-
-  <div className="mt-5 rounded-xl bg-black p-4">
-
-    <p className="text-center text-2xl font-bold text-yellow-400">
-     🏅 {totalPoints} Points
-    </p>
-
-
-    <div className="mt-3 flex flex-wrap justify-center gap-2">
-
-  {correctResult && (
-    <span className="rounded-full bg-green-600 px-3 py-1 text-sm font-bold text-white">
-      🟢 Correct Result
-    </span>
-  )}
-
-  {exactScore && (
-    <span className="rounded-full bg-yellow-500 px-3 py-1 text-sm font-bold text-black">
-      🎯 Exact Score
-    </span>
-  )}
-
-  {correctFTTS && (
-    <span className="rounded-full bg-blue-600 px-3 py-1 text-sm font-bold text-white">
-      ⚽ FTTS Correct +1
-    </span>
-  )}
-
-  {!correctResult && (
-    <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white">
-      ❌ Incorrect
-    </span>
-  )}
-
+<div className="text-center text-xl font-bold text-white">
+  {userPrediction.homeScore} - {userPrediction.awayScore}
 </div>
 
+<p className="mt-3 text-center text-sm text-gray-400">
+  ⚽ First Team To Score
+</p>
+
+<p className="text-center font-semibold text-yellow-400">
+  {userPrediction.firstTeamToScore === "HOME"
+    ? homeTeam
+    : userPrediction.firstTeamToScore === "AWAY"
+    ? awayTeam
+    : "No Goal"}
+</p>
+
+  <div className="mt-5 rounded-xl border border-yellow-500/30 bg-black p-5">
+
+  <div className="text-center">
+
+    <p className="text-5xl">
+      {performanceEmoji}
+    </p>
+
+    <h3 className="mt-2 text-2xl font-bold text-yellow-400">
+      {performanceTitle}
+    </h3>
+
+    <p className="mt-2 text-xl tracking-widest text-yellow-300">
+      {performanceStars}
+    </p>
+
+    <p className="mt-4 text-3xl font-extrabold text-green-400">
+      +{totalPoints} Points
+    </p>
+
   </div>
+
+  <div className="mt-5 flex flex-wrap justify-center gap-2">
+
+    {correctResult && (
+      <span className="rounded-full bg-green-600 px-3 py-1 text-sm font-bold text-white">
+        🟢 Correct Result
+      </span>
+    )}
+
+    {exactScore && (
+      <span className="rounded-full bg-yellow-500 px-3 py-1 text-sm font-bold text-black">
+        🎯 Exact Score
+      </span>
+    )}
+
+    {correctFTTS && (
+      <span className="rounded-full bg-blue-600 px-3 py-1 text-sm font-bold text-white">
+        ⚽ FTTS Correct +1
+      </span>
+    )}
+
+    {!correctResult && (
+      <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white">
+        ❌ Incorrect
+      </span>
+    )}
+
+  </div>
+
+</div>
 
 </div>
 
@@ -493,4 +544,5 @@ const totalPoints =
     </div>
   );
 }
+
 

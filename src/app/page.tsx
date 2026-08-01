@@ -7,6 +7,7 @@ import FixtureCard from "./components/FixtureCard";
 import ConfirmationModal from "./components/ConfirmationModal";
 
 import fixtureService from "./services/fixtureService";
+import { useFixtures } from "./context/FixtureContext";
 import badges from "./data/badges";
 import competitions from "./data/competitions";
 import predictionService from "./services/predictionService";
@@ -17,6 +18,7 @@ import { isFixtureLocked } from "./lib/predictionLock";
 
 import type { Prediction as SavedPrediction } from "./types/prediction";
 import leaderboardService from "./services/leaderboardService";
+import Navbar from "./components/Navbar";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
@@ -46,9 +48,11 @@ const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
   
 const [mounted, setMounted] = useState(false);
 
-  const [fixtures, setFixtures] = useState(
-  fixtureService.getAll()
-);
+const {
+  fixtures,
+  refreshFixtures,
+} = useFixtures();  
+
 const [predictions, setPredictions] = useState<Prediction[]>(
 
     fixtures.map((fixture) => ({
@@ -251,7 +255,6 @@ const completedPredictions = predictions.filter(
   }
 ).length; 
 useEffect(() => {
-setFixtures(fixtureService.getAll());
   const savedPlayer = localStorage.getItem("csp-player");
   const savedPredictions = localStorage.getItem(UI_PREDICTIONS_KEY);
   const savedSubmitted = localStorage.getItem("csp-submitted");
@@ -306,6 +309,7 @@ return (
   <main className="min-h-screen bg-black px-6 py-10 text-white">
 
       <div className="mx-auto max-w-5xl">
+<Navbar />
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-2xl">
 
@@ -600,85 +604,212 @@ onPredictionChange={
 
 )} 
 
-        <section className="mt-12">
+        {leaderboard.length > 0 && (
+  <section className="mb-10">
+    <div className="rounded-3xl border border-yellow-400 bg-gradient-to-r from-yellow-500/20 via-zinc-900 to-yellow-500/20 p-8 shadow-xl">
 
-  <h2 className="mb-6 text-2xl font-bold text-yellow-400">
-    🏆 Round 1 Leaderboard
-  </h2>
+      <div className="text-center">
 
-  <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6">
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
+          Round 1 Winner
+        </p>
 
-   {leaderboard.length === 0 ? (
+        <h2 className="mt-4 text-5xl">
+          🏆
+        </h2>
 
-  <p className="text-center text-gray-400">
-    No scores available yet.
+        <h3 className="mt-3 text-4xl font-extrabold text-yellow-400">
+          {leaderboard[0].player.displayName}
+        </h3>
+
+        <p className="mt-2 text-xl text-white">
+          {leaderboard[0].totalPoints} Points
+        </p>
+
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+
+        <div className="rounded-xl border border-green-700 bg-green-900/20 p-4 text-center">
+
+          <p className="text-sm text-green-300">
+            ✅ Results
+          </p>
+
+          <p className="mt-2 text-3xl font-bold text-green-400">
+            {leaderboard[0].resultPoints}
+          </p>
+
+        </div>
+
+        <div className="rounded-xl border border-yellow-500 bg-yellow-500/10 p-4 text-center">
+
+          <p className="text-sm text-yellow-300">
+            🎯 Exact
+          </p>
+
+          <p className="mt-2 text-3xl font-bold text-yellow-400">
+            {leaderboard[0].exactPoints}
+          </p>
+
+        </div>
+
+        <div className="rounded-xl border border-blue-700 bg-blue-900/20 p-4 text-center">
+
+          <p className="text-sm text-blue-300">
+            ⚽ FTTS
+          </p>
+
+          <p className="mt-2 text-3xl font-bold text-blue-400">
+            {leaderboard[0].fttsPoints}
+          </p>
+
+        </div>
+<div className="rounded-xl border border-purple-600 bg-purple-900/20 p-4 text-center">
+
+  <p className="text-sm text-purple-300">
+    🏅 Bonus
   </p>
 
-) : (
-
-  <div className="space-y-3">
-
-    {leaderboard.map((entry, index) => (
-
-  <div
-    key={entry.player.id}
-    className="flex items-center justify-between rounded-lg bg-black p-4"
-  >
-
-    <div className="flex items-center gap-3">
-
-      <span className="text-xl font-bold text-yellow-400">
-
-        {index === 0
-          ? "🥇"
-          : index === 1
-          ? "🥈"
-          : index === 2
-          ? "🥉"
-          : `${index + 1}.`}
-
-      </span>
-
-      <span className="font-semibold text-white">
-        {entry.player.displayName}
-      </span>
-
-    </div>
-
-        <div className="text-right">
-
-  <p className="text-lg font-bold text-green-400">
-    {entry.totalPoints} pts
+  <p className="mt-2 text-3xl font-bold text-purple-400">
+    {leaderboard[0].bonusPoints}
   </p>
-
-  <div className="mt-1 flex gap-2 text-xs">
-
-    <span className="rounded bg-green-700 px-2 py-1">
-      ✅ {entry.correctResults}
-    </span>
-
-    <span className="rounded bg-yellow-600 px-2 py-1 text-black font-bold">
-      🎯 {entry.exactScores}
-    </span>
-
-    <span className="rounded bg-blue-700 px-2 py-1">
-      ⚽ {entry.correctFTTS}
-    </span>
-
-  </div>
 
 </div>
 
       </div>
 
-    ))}
+    </div>
+  </section>
+)}
 
+<section className="mt-12">
+
+  <h2 className="mb-6 text-center text-3xl font-bold text-yellow-400">
+    🏆 Championship Leaderboard
+  </h2>
+
+  {leaderboard.length === 0 ? (
+    <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
+      <p className="text-lg text-gray-400">
+        No scores available yet.
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-5">
+      {leaderboard.map((entry) => {
+  const cardStyle =
+    entry.rank === 1
+      ? "border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.35)]"
+      : entry.rank === 2
+      ? "border-gray-300"
+      : entry.rank === 3
+      ? "border-amber-700"
+      : "border-yellow-500";
+
+  const titleColor =
+    entry.rank === 1
+      ? "text-yellow-400"
+      : entry.rank === 2
+      ? "text-gray-200"
+      : entry.rank === 3
+      ? "text-amber-500"
+      : "text-white";
+
+  return (
+        <div
+          key={entry.player.id}
+          className={`rounded-2xl border bg-gradient-to-br from-zinc-900 to-black p-6 shadow-lg transition hover:scale-[1.01] ${cardStyle}`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className={`text-2xl font-bold ${titleColor}`}>
+                {entry.rank === 1
+                  ? "🥇"
+                  : entry.rank === 2
+                  ? "🥈"
+                  : entry.rank === 3
+                  ? "🥉"
+                  : `#${entry.rank}`}{" "}
+                {entry.player.displayName}
+              </h3>
+{entry.rank === 1 && (
+  <div className="mt-3 inline-flex items-center rounded-full bg-yellow-400 px-4 py-1 text-sm font-bold text-black shadow-lg">
+    👑 League Leader
   </div>
+)}
 
-)} 
+              <p className="mt-2 text-sm uppercase tracking-widest text-yellow-500">
+                Championship Standing
+              </p>
+            </div>
 
-  </div>
+            <div className="text-right">
+              <p className="text-sm uppercase text-gray-400">
+                Total Points
+              </p>
 
+              <p
+  className={`text-4xl font-extrabold ${
+    entry.rank === 1
+      ? "text-yellow-400"
+      : entry.rank === 2
+      ? "text-gray-200"
+      : entry.rank === 3
+      ? "text-amber-500"
+      : "text-yellow-400"
+  }`}
+>
+                {entry.totalPoints}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="rounded-xl bg-green-900/30 border border-green-700 p-4 text-center">
+              <p className="text-sm text-green-300">
+                ✅ Result Points
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-green-400">
+                {entry.resultPoints}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500 p-4 text-center">
+              <p className="text-sm text-yellow-300">
+                🎯 Exact Points
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-yellow-400">
+                {entry.exactPoints}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-blue-900/30 border border-blue-600 p-4 text-center">
+              <p className="text-sm text-blue-300">
+                ⚽ FTTS Bonus
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-blue-400">
+                {entry.fttsPoints}
+              </p>
+            </div>
+<div className="rounded-xl border border-purple-600 bg-purple-900/30 p-4 text-center">
+  <p className="text-sm text-purple-300">
+    🏅 Bonus Points
+  </p>
+
+  <p className="mt-2 text-3xl font-bold text-purple-400">
+    {entry.bonusPoints}
+  </p>
+</div>
+          </div>
+        </div>
+           );
+    })} 
+    </div>
+  )}
 </section>
 
 <ConfirmationModal
@@ -698,6 +829,11 @@ onPredictionChange={
   );
 
 }
+
+
+
+
+
 
 
 

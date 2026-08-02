@@ -108,5 +108,3 @@ const fixtures: Fixture[] = [
 ];
 
 export default fixtures;
-
-

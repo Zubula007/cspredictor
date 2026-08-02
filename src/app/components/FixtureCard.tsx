@@ -72,28 +72,26 @@ export default function FixtureCard({
     const scoreSelected = true;
 
     if (homeScore === 0 && awayScore === 0) {
-      if (firstTeamToScore !== "NONE") {
-        firstTeamToScore = null;
-      }
-    } else if (homeScore === 0) {
-      if (
-        firstTeamToScore === "HOME" ||
-        firstTeamToScore === "NONE"
-      ) {
-        firstTeamToScore = null;
-      }
-    } else if (awayScore === 0) {
-      if (
-        firstTeamToScore === "AWAY" ||
-        firstTeamToScore === "NONE"
-      ) {
-        firstTeamToScore = null;
-      }
-    } else {
-      if (firstTeamToScore === "NONE") {
-        firstTeamToScore = null;
-      }
-    }
+  firstTeamToScore = "NONE";
+} else if (homeScore === 0) {
+  if (
+    firstTeamToScore === "HOME" ||
+    firstTeamToScore === "NONE"
+  ) {
+    firstTeamToScore = null;
+  }
+} else if (awayScore === 0) {
+  if (
+    firstTeamToScore === "AWAY" ||
+    firstTeamToScore === "NONE"
+  ) {
+    firstTeamToScore = null;
+  }
+} else {
+  if (firstTeamToScore === "NONE") {
+    firstTeamToScore = null;
+  }
+}
 
     onPredictionChange(
       homeScore,
@@ -109,6 +107,12 @@ export default function FixtureCard({
     status === "Live" ||
     status === "Completed" ||
     status === "Cancelled";
+console.log({
+  homeTeam,
+  status,
+  locked,
+  interactionLocked,
+});
 
   const increaseHome = () => {
     if (interactionLocked) return;
@@ -209,10 +213,25 @@ export default function FixtureCard({
     result.awayScore === userPrediction.awayScore;
 
   const correctFTTS =
-    result &&
-    correctResult &&
-    userPrediction.firstTeamToScore !== null &&
-    userPrediction.firstTeamToScore !== "NONE";
+  result &&
+  correctResult &&
+  (
+    (result.homeScore === 0 &&
+      result.awayScore === 0 &&
+      userPrediction.firstTeamToScore === "NONE") ||
+
+    (result.homeScore > 0 &&
+      result.awayScore === 0 &&
+      userPrediction.firstTeamToScore === "HOME") ||
+
+    (result.awayScore > 0 &&
+      result.homeScore === 0 &&
+      userPrediction.firstTeamToScore === "AWAY") ||
+
+    (result.homeScore > 0 &&
+      result.awayScore > 0 &&
+      userPrediction.firstTeamToScore !== "NONE")
+  );
 
 const totalPoints =
     exactScore
@@ -544,5 +563,7 @@ if (totalPoints === 6) {
     </div>
   );
 }
+
+
 
 

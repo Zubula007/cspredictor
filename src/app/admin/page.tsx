@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import playerRepository from "../repositories/playerRepository";
-import fixtureRepository from "../repositories/fixtureRepository";
-import leaderboardService from "../services/leaderboardService";
+
+import { useFixtures } from "../context/FixtureContext";
+import { useLeaderboard } from "../context/LeaderboardContext";
 
 const adminCards = [
   {
@@ -36,51 +36,11 @@ const adminCards = [
 ];
 
 export default function AdminDashboardPage() {
-
   const players = playerRepository.getActivePlayers();
 
-  const [fixtures, setFixtures] = useState(
-    fixtureRepository.getAll()
-  );
+  const { fixtures } = useFixtures();
 
-
-  useEffect(() => {
-
-    const refreshFixtures = () => {
-
-      setFixtures(
-        fixtureRepository.getAll()
-      );
-
-    };
-
-
-    refreshFixtures();
-
-
-    window.addEventListener(
-      "focus",
-      refreshFixtures
-    );
-
-
-    return () => {
-
-      window.removeEventListener(
-        "focus",
-        refreshFixtures
-      );
-
-    };
-
-
-  }, []);
-
-
-
-  const leaderboard =
-    leaderboardService.getLeaderboard();
-
+  const { leaderboard } = useLeaderboard();
 
 
   const pendingResults = fixtures.filter(
@@ -90,12 +50,10 @@ export default function AdminDashboardPage() {
   ).length;
 
 
-
   const publishedResults = fixtures.filter(
     (fixture) =>
       fixture.published
   ).length;
-
 
 
   return (
@@ -103,13 +61,11 @@ export default function AdminDashboardPage() {
 
       <div className="mx-auto max-w-6xl">
 
-
         <div className="mb-10 text-center">
 
           <h1 className="text-5xl font-extrabold text-yellow-400">
             ⚙️ Admin Dashboard
           </h1>
-
 
           <p className="mt-3 text-gray-400">
             Championship Score Predictor Administration
@@ -118,83 +74,67 @@ export default function AdminDashboardPage() {
         </div>
 
 
-
         <div className="mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
 
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
-
             <p className="text-sm uppercase text-gray-400">
               👥 Active Players
             </p>
 
-
             <p className="mt-2 text-4xl font-bold text-yellow-400">
               {players.length}
             </p>
-
           </div>
 
 
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
-
             <p className="text-sm uppercase text-gray-400">
               ⚽ Fixtures
             </p>
 
-
             <p className="mt-2 text-4xl font-bold text-yellow-400">
               {fixtures.length}
             </p>
-
           </div>
 
 
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
-
             <p className="text-sm uppercase text-gray-400">
               🏆 League Leader
             </p>
-
 
             <p className="mt-2 text-xl font-bold text-yellow-400">
               {leaderboard.length > 0
                 ? leaderboard[0].player.displayName
                 : "-"}
             </p>
-
           </div>
 
 
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
-
             <p className="text-sm uppercase text-gray-400">
               📢 Pending Results
             </p>
 
-
             <p className="mt-2 text-4xl font-bold text-yellow-400">
               {pendingResults}
             </p>
-
           </div>
 
 
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
-
             <p className="text-sm uppercase text-gray-400">
               ✅ Published Results
             </p>
 
-
             <p className="mt-2 text-4xl font-bold text-yellow-400">
               {publishedResults}
             </p>
-
           </div>
 
 
@@ -203,8 +143,7 @@ export default function AdminDashboardPage() {
 
 
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
+        <div className="grid gap-6 md:grid-cols-2 lg-grid-cols-3">
 
           {adminCards.map((card) => (
 
@@ -218,7 +157,6 @@ export default function AdminDashboardPage() {
                 {card.title}
               </h2>
 
-
               <p className="mt-3 text-gray-300">
                 {card.description}
               </p>
@@ -226,7 +164,6 @@ export default function AdminDashboardPage() {
             </Link>
 
           ))}
-
 
         </div>
 

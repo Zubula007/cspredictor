@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import fixtureService from "../../services/fixtureService";
-import predictionService from "../../services/predictionService";
 
 import { useFixtures } from "../../context/FixtureContext";
+import { useLeaderboard } from "../../context/LeaderboardContext";
 
 import {
   FirstTeamToScore,
@@ -17,6 +17,7 @@ export default function AdminResultsPage() {
   const router = useRouter();
 
   const { fixtures, refreshFixtures } = useFixtures();
+  const { refreshLeaderboard } = useLeaderboard();
 
   const searchParams = useSearchParams();
 
@@ -41,7 +42,9 @@ export default function AdminResultsPage() {
   }, [fixtureFromUrl]);
 
   const selectedFixture =
-    fixtureService.getById(selectedFixtureId);
+    fixtures.find(
+      (fixture) => fixture.id === selectedFixtureId
+    );
 
   const availableFTTS = useMemo(() => {
     if (homeScore === 0 && awayScore === 0) {
@@ -113,6 +116,8 @@ export default function AdminResultsPage() {
     }
 
     refreshFixtures();
+
+    refreshLeaderboard();
 
     setMessage(
       `Result published successfully ✅ ${result.summary.predictionsScored} predictions scored`

@@ -4,6 +4,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { FixtureProvider } from "./context/FixtureContext";
+import { LeaderboardProvider } from "./context/LeaderboardContext";
+
+import Navbar from "./components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +31,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black`}
       >
         <FixtureProvider>
-          {children}
+          <LeaderboardProvider>
+            <div className="mx-auto max-w-7xl px-6 py-6">
+              <Navbar />
+              {children}
+            </div>
+          </LeaderboardProvider>
         </FixtureProvider>
       </body>
     </html>

@@ -18,7 +18,6 @@ import { isFixtureLocked } from "./lib/predictionLock";
 
 import type { Prediction as SavedPrediction } from "./types/prediction";
 import leaderboardService from "./services/leaderboardService";
-import Navbar from "./components/Navbar";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
@@ -283,17 +282,40 @@ setMounted(true);
 }, []);
 
 useEffect(() => {
-  localStorage.setItem("csp-player", playerName);
+  const savedPlayer = localStorage.getItem("csp-player");
+  const savedPredictions = localStorage.getItem(UI_PREDICTIONS_KEY);
+  const savedSubmitted = localStorage.getItem("csp-submitted");
+  const savedSubmittedAt = localStorage.getItem("csp-submittedAt");
 
-  localStorage.setItem(
-    UI_PREDICTIONS_KEY,
-    JSON.stringify(predictions)
-  );
+  if (savedPlayer) {
+    setPlayerName(savedPlayer);
+  }
 
+  if (savedPredictions) {
+    try {
+      setPredictions(JSON.parse(savedPredictions));
+    } catch {
+      console.error("Unable to load saved predictions.");
+    }
+  }
+
+  if (savedSubmitted === "true") {
+    setSubmitted(true);
+  }
+
+  if (savedSubmittedAt) {
+    setSubmittedAt(savedSubmittedAt);
+  }
+
+  setMounted(true);
+}, []);
+
+useEffect(() => {
   setLeaderboard(
     leaderboardService.getLeaderboard()
   );
 }, [playerName, predictions]);
+
 useEffect(() => {
   setLeaderboard(
     leaderboardService.getLeaderboard()
@@ -309,7 +331,6 @@ return (
   <main className="min-h-screen bg-black px-6 py-10 text-white">
 
       <div className="mx-auto max-w-5xl">
-<Navbar />
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-2xl">
 
@@ -829,6 +850,8 @@ onPredictionChange={
   );
 
 }
+
+
 
 
 

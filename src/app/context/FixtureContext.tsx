@@ -29,16 +29,30 @@ export function FixtureProvider({
 }: {
   children: ReactNode;
 }) {
-  const [fixtures, setFixtures] = useState(
-    fixtureRepository.getAll()
+  const [fixtures, setFixtures] = useState<Fixture[]>(
+    () => fixtureRepository.getAll()
   );
 
+  /**
+   * Reload fixtures from the repository
+   * Used after:
+   * - publishing results
+   * - editing fixtures
+   * - changing fixture status
+   */
   function refreshFixtures() {
+    const updatedFixtures =
+      fixtureRepository.getAll();
+
     setFixtures([
-      ...fixtureRepository.getAll(),
+      ...updatedFixtures,
     ]);
   }
 
+  /**
+   * Update one fixture and immediately
+   * refresh the global fixture state
+   */
   function updateFixture(
     fixtureId: string,
     updates: Partial<Fixture>
@@ -48,9 +62,7 @@ export function FixtureProvider({
       updates
     );
 
-    setFixtures([
-      ...fixtureRepository.getAll(),
-    ]);
+    refreshFixtures();
   }
 
   return (

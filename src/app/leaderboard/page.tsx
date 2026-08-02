@@ -1,20 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import leaderboardService, {
-  type LeaderboardEntry,
-} from "../services/leaderboardService";
+import { useLeaderboard } from "../context/LeaderboardContext";
 
 export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<
-    LeaderboardEntry[]
-  >([]);
-
-  useEffect(() => {
-    setLeaderboard(
-      leaderboardService.getLeaderboard()
-    );
-  }, []);
+  const { leaderboard } = useLeaderboard();
 
   const getMedal = (rank: number) => {
     if (rank === 1) return "🥇";
@@ -93,13 +82,15 @@ export default function LeaderboardPage() {
                   </td>
 
 
-                  <td className="
-                    p-4
-                    text-center
-                    text-xl
-                    font-bold
-                    text-yellow-400
-                  ">
+                  <td
+                    className="
+                      p-4
+                      text-center
+                      text-xl
+                      font-bold
+                      text-yellow-400
+                    "
+                  >
                     {entry.totalPoints} pts
                   </td>
 

@@ -3,23 +3,27 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import fixtureService from "../../../services/fixtureService";
+import { useFixtures } from "../../../context/FixtureContext";
 
 export default function EditFixturePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const {
+    fixtures,
+    updateFixture,
+  } = useFixtures();
+
   const fixtureId = searchParams.get("fixture");
+
+  const fixture = fixtures.find(
+    (item) => item.id === fixtureId
+  );
 
   const [matchDate, setMatchDate] = useState("");
   const [kickOff, setKickOff] = useState("");
   const [status, setStatus] = useState("Scheduled");
   const [published, setPublished] = useState(true);
-
-  const fixture = fixtureId
-    ? fixtureService.getById(fixtureId)
-    : undefined;
-
 
   useEffect(() => {
     if (!fixture) return;
@@ -28,15 +32,12 @@ export default function EditFixturePage() {
     setKickOff(fixture.kickOff ?? "");
     setStatus(fixture.status);
     setPublished(fixture.published);
-
   }, [fixture]);
-
 
   if (!fixture) {
     return (
       <main className="min-h-screen bg-black p-6 text-white">
         <div className="mx-auto max-w-xl rounded-xl border border-red-500 bg-zinc-900 p-6 text-center">
-
           <h1 className="text-2xl font-bold text-red-400">
             Fixture Not Found
           </h1>
@@ -44,47 +45,35 @@ export default function EditFixturePage() {
           <p className="mt-3 text-gray-300">
             Please select a valid fixture to edit.
           </p>
-
         </div>
       </main>
     );
   }
 
-
   const currentFixture = fixture;
 
-
   function saveChanges() {
-
-    fixtureService.updateFixture(
-      currentFixture.id,
-      {
-        matchDate,
-        kickOff,
-        status: status as typeof currentFixture.status,
-        published,
-      }
-    );
-
+    updateFixture(currentFixture.id, {
+      matchDate,
+      kickOff,
+      status: status as typeof currentFixture.status,
+      published,
+    });
 
     alert("Fixture updated successfully ✅");
 
     router.push("/admin/fixtures");
   }
 
-
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
-
       <div className="mx-auto max-w-xl rounded-2xl border border-yellow-500 bg-zinc-900 p-6">
 
         <h1 className="mb-6 text-center text-3xl font-bold text-yellow-400">
           ✏️ Edit Fixture
         </h1>
 
-
         <div className="mb-6 text-center">
-
           <h2 className="text-xl font-bold">
             {currentFixture.homeTeam}
           </h2>
@@ -96,9 +85,7 @@ export default function EditFixturePage() {
           <h2 className="text-xl font-bold">
             {currentFixture.awayTeam}
           </h2>
-
         </div>
-
 
         <label className="mb-2 block">
           Match Date
@@ -111,7 +98,6 @@ export default function EditFixturePage() {
           className="mb-5 w-full rounded bg-white p-2 text-black"
         />
 
-
         <label className="mb-2 block">
           Kick-off Time
         </label>
@@ -123,7 +109,6 @@ export default function EditFixturePage() {
           className="mb-5 w-full rounded bg-white p-2 text-black"
         />
 
-
         <label className="mb-2 block">
           Status
         </label>
@@ -133,28 +118,40 @@ export default function EditFixturePage() {
           onChange={(e) => setStatus(e.target.value)}
           className="mb-5 w-full rounded bg-white p-2 text-black"
         >
-          <option value="Scheduled">Scheduled</option>
-          <option value="Live">Live</option>
-          <option value="Completed">Completed</option>
-          <option value="Postponed">Postponed</option>
-          <option value="Cancelled">Cancelled</option>
+          <option value="Scheduled">
+            Scheduled
+          </option>
+
+          <option value="Live">
+            Live
+          </option>
+
+          <option value="Completed">
+            Completed
+          </option>
+
+          <option value="Postponed">
+            Postponed
+          </option>
+
+          <option value="Cancelled">
+            Cancelled
+          </option>
         </select>
 
-
         <label className="flex items-center gap-3">
-
           <input
             type="checkbox"
             checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
+            onChange={(e) =>
+              setPublished(e.target.checked)
+            }
           />
 
           <span>
             Fixture Published
           </span>
-
         </label>
-
 
         <button
           onClick={saveChanges}
@@ -164,7 +161,6 @@ export default function EditFixturePage() {
         </button>
 
       </div>
-
     </main>
   );
 }

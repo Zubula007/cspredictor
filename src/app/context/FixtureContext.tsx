@@ -12,7 +12,13 @@ import type { Fixture } from "../types/fixture";
 
 type FixtureContextType = {
   fixtures: Fixture[];
+
   refreshFixtures: () => void;
+
+  updateFixture: (
+    fixtureId: string,
+    updates: Partial<Fixture>
+  ) => void;
 };
 
 const FixtureContext =
@@ -33,11 +39,26 @@ export function FixtureProvider({
     ]);
   }
 
+  function updateFixture(
+    fixtureId: string,
+    updates: Partial<Fixture>
+  ) {
+    fixtureRepository.updateFixture(
+      fixtureId,
+      updates
+    );
+
+    setFixtures([
+      ...fixtureRepository.getAll(),
+    ]);
+  }
+
   return (
     <FixtureContext.Provider
       value={{
         fixtures,
         refreshFixtures,
+        updateFixture,
       }}
     >
       {children}

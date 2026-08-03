@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   ReactNode,
 } from "react";
@@ -31,10 +32,7 @@ export function LeaderboardProvider({
 }) {
 
   const [leaderboard, setLeaderboard] =
-    useState<LeaderboardEntry[]>(
-      () => leaderboardService.getLeaderboard()
-    );
-
+    useState<LeaderboardEntry[]>([]);
 
 
   function refreshLeaderboard() {
@@ -42,12 +40,16 @@ export function LeaderboardProvider({
     const updatedLeaderboard =
       leaderboardService.getLeaderboard();
 
-
     setLeaderboard([
       ...updatedLeaderboard,
     ]);
 
   }
+
+
+  useEffect(() => {
+    refreshLeaderboard();
+  }, []);
 
 
 

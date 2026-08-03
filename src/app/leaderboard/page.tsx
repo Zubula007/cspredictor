@@ -1,9 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { useLeaderboard } from "../context/LeaderboardContext";
 
 export default function LeaderboardPage() {
   const { leaderboard } = useLeaderboard();
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getMedal = (rank: number) => {
     if (rank === 1) return "🥇";
@@ -12,6 +20,16 @@ export default function LeaderboardPage() {
 
     return rank;
   };
+
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-black p-6 text-white">
+        <div className="text-center text-yellow-400">
+          Loading leaderboard...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
@@ -25,9 +43,14 @@ export default function LeaderboardPage() {
 
           <thead>
             <tr className="border-b border-yellow-500 text-yellow-400">
-              <th className="p-3 text-left">Rank</th>
 
-              <th className="p-3 text-left">Player</th>
+              <th className="p-3 text-left">
+                Rank
+              </th>
+
+              <th className="p-3 text-left">
+                Player
+              </th>
 
               <th className="p-3 text-center">
                 Total Points
@@ -44,21 +67,23 @@ export default function LeaderboardPage() {
               <th className="p-3 text-center">
                 🔥 FTTS Points
               </th>
+
             </tr>
           </thead>
 
 
           <tbody>
+
             {leaderboard.map((entry) => {
 
               const resultPoints =
-                entry.correctResults * 3;
+                entry.resultPoints;
 
               const exactPoints =
-                entry.exactScores * 2;
+                entry.exactPoints;
 
               const fttsPoints =
-                entry.correctFTTS * 1;
+                entry.fttsPoints;
 
 
               return (
@@ -109,9 +134,11 @@ export default function LeaderboardPage() {
                     🔥 {fttsPoints} pts
                   </td>
 
+
                 </tr>
               );
             })}
+
           </tbody>
 
         </table>

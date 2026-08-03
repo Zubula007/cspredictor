@@ -54,15 +54,40 @@ class PredictionRepository {
   }
 
   save(prediction: Prediction): void {
-    const predictions =
-      this.getStoredPredictions();
+  const predictions =
+    this.getStoredPredictions();
 
+  console.log("=================================");
+  console.log("Saving:", prediction.id);
+
+  console.log(
+    "Existing IDs:",
+    predictions.map((p) => p.id)
+  );
+
+  const existingIndex =
+    predictions.findIndex(
+      (item) =>
+        item.id === prediction.id
+    );
+
+  console.log("Found index:", existingIndex);
+
+  if (existingIndex >= 0) {
+    predictions[existingIndex] =
+      prediction;
+
+    console.log("UPDATED");
+  } else {
     predictions.push(prediction);
 
-    this.saveStoredPredictions(
-      predictions
-    );
+    console.log("CREATED");
   }
+
+  this.saveStoredPredictions(
+    predictions
+  );
+}
 
   updateScoredPrediction(
     predictionId: string,
@@ -85,9 +110,12 @@ class PredictionRepository {
     }
 
     prediction.points = points;
-    prediction.correctResult = correctResult;
-    prediction.exactScore = exactScore;
-    prediction.correctFTTS = correctFTTS;
+    prediction.correctResult =
+      correctResult;
+    prediction.exactScore =
+      exactScore;
+    prediction.correctFTTS =
+      correctFTTS;
     prediction.scored = true;
 
     this.saveStoredPredictions(
@@ -102,3 +130,5 @@ const predictionRepository =
   new PredictionRepository();
 
 export default predictionRepository;
+
+

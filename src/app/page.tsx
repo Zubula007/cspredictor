@@ -253,33 +253,6 @@ const completedPredictions = predictions.filter(
     );
   }
 ).length; 
-useEffect(() => {
-  const savedPlayer = localStorage.getItem("csp-player");
-  const savedPredictions = localStorage.getItem(UI_PREDICTIONS_KEY);
-  const savedSubmitted = localStorage.getItem("csp-submitted");
-  const savedSubmittedAt = localStorage.getItem("csp-submittedAt");
-
-  if (savedPlayer) {
-    setPlayerName(savedPlayer);
-  }
-
-  if (savedPredictions) {
-    try {
-      setPredictions(JSON.parse(savedPredictions));
-    } catch {
-      console.error("Unable to load saved predictions.");
-    }
-  }
-
-  if (savedSubmitted === "true") {
-    setSubmitted(true);
-  }
-
-  if (savedSubmittedAt) {
-    setSubmittedAt(savedSubmittedAt);
-  }
-setMounted(true);
-}, []);
 
 useEffect(() => {
   const savedPlayer = localStorage.getItem("csp-player");
@@ -309,6 +282,19 @@ useEffect(() => {
 
   setMounted(true);
 }, []);
+useEffect(() => {
+  if (!mounted) return;
+
+  localStorage.setItem(
+    "csp-player",
+    playerName
+  );
+
+  localStorage.setItem(
+    UI_PREDICTIONS_KEY,
+    JSON.stringify(predictions)
+  );
+}, [playerName, predictions, mounted]);
 
 useEffect(() => {
   setLeaderboard(
@@ -460,6 +446,7 @@ displayDate={fixture.displayDate}
 result={{
   homeScore: fixture.homeScore ?? 0,
   awayScore: fixture.awayScore ?? 0,
+  firstTeamToScore: fixture.firstTeamToScore ?? "None",
 }}
 locked={locked}
 
@@ -850,6 +837,8 @@ onPredictionChange={
   );
 
 }
+
+
 
 
 

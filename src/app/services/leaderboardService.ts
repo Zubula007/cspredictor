@@ -24,46 +24,125 @@ export interface LeaderboardEntry {
 }
 
 class LeaderboardService {
+
   getLeaderboard(): LeaderboardEntry[] {
-    const players = playerRepository.getActivePlayers();
-    const predictions = predictionRepository.getAll();
+
+    console.log("🏆 Building leaderboard");
+
+
+    const players =
+      playerRepository.getActivePlayers();
+
+
+    console.log(
+      "👥 Active players:",
+      players
+    );
+
+
+    const predictions =
+      predictionRepository.getAll();
+
+
+    console.log(
+      "📊 Stored predictions:",
+      predictions
+    );
+
 
     const leaderboard = players.map((player) => {
-      const playerPredictions = predictions.filter(
-        (prediction) => prediction.playerId === player.id
+
+
+      const playerPredictions =
+        predictions.filter(
+          (prediction) =>
+            prediction.playerId === player.id
+        );
+
+
+      console.log(
+        "👤 Player:",
+        player.displayName,
+        "Predictions:",
+        playerPredictions
       );
 
-      const correctResults = playerPredictions.filter(
-        (prediction) => prediction.correctResult
-      ).length;
 
-      const exactScores = playerPredictions.filter(
-        (prediction) => prediction.exactScore
-      ).length;
-
-      const correctFTTS = playerPredictions.filter(
-        (prediction) => prediction.correctFTTS
-      ).length;
-
-      const predictionPoints = playerPredictions.reduce(
-        (sum, prediction) => sum + (prediction.points ?? 0),
-        0
+      console.table(
+        playerPredictions.map((p) => ({
+          fixture: p.fixtureId,
+          prediction: `${p.homeScore}-${p.awayScore}`,
+          points: p.points,
+          correctResult: p.correctResult,
+          exactScore: p.exactScore,
+          correctFTTS: p.correctFTTS,
+          scored: p.scored,
+        }))
       );
+
+
+      const correctResults =
+        playerPredictions.filter(
+          (prediction) =>
+            prediction.correctResult
+        ).length;
+
+
+      const exactScores =
+        playerPredictions.filter(
+          (prediction) =>
+            prediction.exactScore
+        ).length;
+
+
+      const correctFTTS =
+        playerPredictions.filter(
+          (prediction) =>
+            prediction.correctFTTS
+        ).length;
+
+
+      const predictionPoints =
+        playerPredictions.reduce(
+          (sum, prediction) =>
+            sum + (prediction.points ?? 0),
+          0
+        );
+
+
+      console.log(
+        "📈",
+        player.displayName,
+        "Points:",
+        predictionPoints
+      );
+
 
       return {
+
         rank: 0,
 
         player,
 
-        totalPoints: predictionPoints,
+        totalPoints:
+          predictionPoints,
 
-        resultPoints: correctResults * 3,
 
-        exactPoints: exactScores * 2,
+        resultPoints:
+          correctResults * 3,
 
-        fttsPoints: correctFTTS,
 
-        bonusPoints: 0,
+        exactPoints:
+          exactScores * 2,
+
+
+        fttsPoints:
+          correctFTTS,
+
+
+        bonusPoints:
+          0,
+
 
         correctResults,
 
@@ -71,36 +150,84 @@ class LeaderboardService {
 
         correctFTTS,
 
-        movement: "SAME" as const,
+
+        movement:
+          "SAME" as const,
+
       };
+
     });
 
-    // Find the highest score
-    const highestScore = Math.max(
-      ...leaderboard.map((entry) => entry.totalPoints),
-      0
-    );
 
-    // Players sharing the highest score
-    const winners = leaderboard.filter(
-      (entry) => entry.totalPoints === highestScore
-    );
 
-    // Award bonus only if there is a unique winner
-    if (highestScore > 0 && winners.length === 1) {
-      winners[0].bonusPoints += ROUND_WINNER_BONUS;
-      winners[0].totalPoints += ROUND_WINNER_BONUS;
+    /*
+      Temporary Round Winner Bonus
+      We will remove this after verification
+    */
+
+    const highestScore =
+      Math.max(
+        ...leaderboard.map(
+          (entry) =>
+            entry.totalPoints
+        ),
+        0
+      );
+
+
+    const winners =
+      leaderboard.filter(
+        (entry) =>
+          entry.totalPoints === highestScore
+      );
+
+
+    if (
+      highestScore > 0 &&
+      winners.length === 1
+    ) {
+
+      winners[0].bonusPoints +=
+        ROUND_WINNER_BONUS;
+
+
+      winners[0].totalPoints +=
+        ROUND_WINNER_BONUS;
+
     }
 
-    return leaderboard
-      .sort((a, b) => b.totalPoints - a.totalPoints)
-      .map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      }));
+
+
+    const finalLeaderboard =
+      leaderboard
+        .sort(
+          (a, b) =>
+            b.totalPoints -
+            a.totalPoints
+        )
+        .map(
+          (entry, index) => ({
+            ...entry,
+            rank: index + 1,
+          })
+        );
+
+
+    console.log(
+      "🏆 Final leaderboard:",
+      finalLeaderboard
+    );
+
+
+    return finalLeaderboard;
+
   }
+
 }
 
-const leaderboardService = new LeaderboardService();
+
+const leaderboardService =
+  new LeaderboardService();
+
 
 export default leaderboardService;

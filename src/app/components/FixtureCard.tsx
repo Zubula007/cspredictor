@@ -40,9 +40,10 @@ type FixtureCardProps = {
   incomplete?: boolean;
 
   result?: {
-    homeScore: number;
-    awayScore: number;
-  };
+  homeScore: number;
+  awayScore: number;
+  firstTeamToScore: "Home" | "Away" | "None";
+};
 };
 
 export default function FixtureCard({
@@ -101,12 +102,7 @@ export default function FixtureCard({
     );
   };
 
-  const interactionLocked =
-    locked ||
-    status === "Postponed" ||
-    status === "Live" ||
-    status === "Completed" ||
-    status === "Cancelled";
+  const interactionLocked = false;
 console.log({
   homeTeam,
   status,
@@ -242,6 +238,12 @@ const totalPoints =
 let performanceTitle = "";
 let performanceEmoji = "";
 let performanceStars = "";
+const officialFTTS =
+  result?.firstTeamToScore === "Home"
+    ? `⚽ ${homeTeam}`
+    : result?.firstTeamToScore === "Away"
+    ? `⚽ ${awayTeam}`
+    : "🚫 No Goal";
 
 if (totalPoints === 6) {
   performanceTitle = "Perfect Prediction";
@@ -451,8 +453,17 @@ if (totalPoints === 6) {
 
             <span>{awayTeam}</span>
           </div>
+<div className="mt-4 rounded-lg border border-blue-500/30 bg-blue-950/20 p-3 text-center">
+  <p className="text-sm text-gray-400">
+    ⚽ First Team To Score
+  </p>
 
-          <div className="mt-5 border-t border-green-800 pt-4">
+  <p className="mt-1 font-semibold text-blue-300">
+    {officialFTTS}
+  </p>
+</div>
+
+<div className="mt-5 border-t border-green-800 pt-4">
 
   <h4 className="mb-2 text-center font-semibold text-yellow-400">
   Your Prediction
@@ -563,6 +574,10 @@ if (totalPoints === 6) {
     </div>
   );
 }
+
+
+
+
 
 
 

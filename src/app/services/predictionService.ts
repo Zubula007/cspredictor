@@ -62,6 +62,8 @@ class PredictionService {
       correctResult: false,
 
       correctFTTS: false,
+
+      scored: false,
     });
   }
 
@@ -89,23 +91,15 @@ class PredictionService {
   scoreFixture(
     fixture: Fixture
   ): ScoreFixtureSummary {
+
     const predictions =
       predictionRepository.getByFixture(fixture.id);
-console.log("Scoring fixture:", fixture.id);
-console.log("Predictions found:", predictions);
 
     let predictionsScored = 0;
-
     let highestScore = 0;
-
     let totalPoints = 0;
 
     for (const prediction of predictions) {
-console.log("Prediction:", prediction);
-console.log("prediction.scored =", prediction.scored);
-      if (prediction.scored) {
-        continue;
-      }
 
       const result = this.scorePrediction(
         prediction,
@@ -150,5 +144,3 @@ console.log("prediction.scored =", prediction.scored);
 const predictionService = new PredictionService();
 
 export default predictionService;
-
-

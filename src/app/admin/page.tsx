@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import playerRepository from "../repositories/playerRepository";
+import competitionService from "../services/competitionService";
 
 import { useFixtures } from "../context/FixtureContext";
 import { useLeaderboard } from "../context/LeaderboardContext";
@@ -42,23 +43,29 @@ export default function AdminDashboardPage() {
 
   const { leaderboard } = useLeaderboard();
 
+  const activeCompetition =
+    competitionService.getActiveCompetition();
 
   const pendingResults = fixtures.filter(
     (fixture) =>
       fixture.status === "Completed" &&
-      !fixture.published
+      !fixture.published &&
+      fixture.competitionId === activeCompetition.id
   ).length;
-
 
   const publishedResults = fixtures.filter(
     (fixture) =>
-      fixture.published
+      fixture.published &&
+      fixture.competitionId === activeCompetition.id
   ).length;
 
+  const competitionFixtures = fixtures.filter(
+    (fixture) =>
+      fixture.competitionId === activeCompetition.id
+  );
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
-
       <div className="mx-auto max-w-6xl">
 
         <div className="mb-10 text-center">
@@ -73,9 +80,79 @@ export default function AdminDashboardPage() {
 
         </div>
 
+        {/* Active Competition */}
+
+        <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-xl">
+
+          <h2 className="text-center text-3xl font-bold text-yellow-400">
+            🏆 Active Competition
+          </h2>
+
+          <p className="mt-4 text-center text-2xl font-bold">
+            {activeCompetition.name}
+          </p>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+
+            <div
+              className={`rounded-xl border p-5 text-center ${
+                activeCompetition.roundWinnerEnabled
+                  ? "border-green-600 bg-green-900/20"
+                  : "border-red-600 bg-red-900/20"
+              }`}
+            >
+              <p className="font-semibold">
+                Round Winner
+              </p>
+
+              <p className="mt-2 text-2xl">
+                {activeCompetition.roundWinnerEnabled
+                  ? "✅"
+                  : "❌"}
+              </p>
+            </div>
+
+            <div
+              className={`rounded-xl border p-5 text-center ${
+                activeCompetition.monthlyWinnerEnabled
+                  ? "border-green-600 bg-green-900/20"
+                  : "border-red-600 bg-red-900/20"
+              }`}
+            >
+              <p className="font-semibold">
+                Monthly Winner
+              </p>
+
+              <p className="mt-2 text-2xl">
+                {activeCompetition.monthlyWinnerEnabled
+                  ? "✅"
+                  : "❌"}
+              </p>
+            </div>
+
+            <div
+              className={`rounded-xl border p-5 text-center ${
+                activeCompetition.monthlyWinnerEnabled
+                  ? "border-green-600 bg-green-900/20"
+                  : "border-red-600 bg-red-900/20"
+              }`}
+            >
+              <p className="font-semibold">
+                Bonus Points
+              </p>
+
+              <p className="mt-2 text-2xl">
+                {activeCompetition.monthlyWinnerEnabled
+                  ? "✅"
+                  : "❌"}
+              </p>
+            </div>
+
+          </div>
+
+        </div>
 
         <div className="mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
@@ -87,23 +164,19 @@ export default function AdminDashboardPage() {
             </p>
           </div>
 
-
-
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
               ⚽ Fixtures
             </p>
 
             <p className="mt-2 text-4xl font-bold text-yellow-400">
-              {fixtures.length}
+              {competitionFixtures.length}
             </p>
           </div>
 
-
-
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
-              🏆 League Leader
+              🏆 Competition Leader
             </p>
 
             <p className="mt-2 text-xl font-bold text-yellow-400">
@@ -112,8 +185,6 @@ export default function AdminDashboardPage() {
                 : "-"}
             </p>
           </div>
-
-
 
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
@@ -125,8 +196,6 @@ export default function AdminDashboardPage() {
             </p>
           </div>
 
-
-
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
               ✅ Published Results
@@ -137,13 +206,9 @@ export default function AdminDashboardPage() {
             </p>
           </div>
 
-
         </div>
 
-
-
-
-        <div className="grid gap-6 md:grid-cols-2 lg-grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
           {adminCards.map((card) => (
 
@@ -167,9 +232,7 @@ export default function AdminDashboardPage() {
 
         </div>
 
-
       </div>
-
     </main>
   );
 }

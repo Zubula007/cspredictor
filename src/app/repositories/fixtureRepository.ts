@@ -85,7 +85,9 @@ class FixtureRepository {
 
 
 
-  getByCompetition(competitionId: string): Fixture[] {
+  getByCompetition(
+    competitionId: string
+  ): Fixture[] {
 
     this.refreshFixtures();
 
@@ -98,7 +100,9 @@ class FixtureRepository {
 
 
 
-  getById(id: string): Fixture | undefined {
+  getById(
+    id: string
+  ): Fixture | undefined {
 
     this.refreshFixtures();
 
@@ -111,7 +115,9 @@ class FixtureRepository {
 
 
 
-  getByRound(round: number): Fixture[] {
+  getByRound(
+    round: number
+  ): Fixture[] {
 
     this.refreshFixtures();
 
@@ -124,7 +130,9 @@ class FixtureRepository {
 
 
 
-  getByStreak(streak: number): Fixture[] {
+  getByStreak(
+    streak: number
+  ): Fixture[] {
 
     this.refreshFixtures();
 
@@ -132,6 +140,22 @@ class FixtureRepository {
       (fixture) =>
         fixture.streak === streak
     );
+
+  }
+
+
+
+  createFixture(
+    fixture: Fixture
+  ): Fixture {
+
+    this.fixtures.push(
+      fixture
+    );
+
+    this.saveFixtures();
+
+    return fixture;
 
   }
 

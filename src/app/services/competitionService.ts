@@ -1,63 +1,64 @@
-import type { Fixture } from "../types/fixture";
-import type { Prediction } from "../types/prediction";
+import { CompetitionIds } from "../lib/enums";
+
+export interface CompetitionInfo {
+  id: string;
+  name: string;
+  logo: string;
+
+  roundWinnerEnabled: boolean;
+  monthlyWinnerEnabled: boolean;
+}
+
+const COMPETITIONS: Record<string, CompetitionInfo> = {
+  [CompetitionIds.BET]: {
+    id: CompetitionIds.BET,
+    name: "Betway Premiership",
+    logo: "/competitions/betway.png",
+    roundWinnerEnabled: true,
+    monthlyWinnerEnabled: true,
+  },
+
+  [CompetitionIds.MTN]: {
+    id: CompetitionIds.MTN,
+    name: "MTN8",
+    logo: "/competitions/mtn8.png",
+    roundWinnerEnabled: false,
+    monthlyWinnerEnabled: false,
+  },
+
+  [CompetitionIds.NED]: {
+    id: CompetitionIds.NED,
+    name: "Nedbank Cup",
+    logo: "/competitions/nedbank.png",
+    roundWinnerEnabled: false,
+    monthlyWinnerEnabled: false,
+  },
+
+  [CompetitionIds.CAR]: {
+    id: CompetitionIds.CAR,
+    name: "Carling Knockout",
+    logo: "/competitions/carling.png",
+    roundWinnerEnabled: false,
+    monthlyWinnerEnabled: false,
+  },
+};
 
 class CompetitionService {
-  calculatePrediction(
-    prediction: Prediction,
-    fixture: Fixture
-  ): Prediction {
-    let points = 0;
 
-    let correctResult = false;
-    let exactScore = false;
-    let correctFTTS = false;
+  getActiveCompetition(): CompetitionInfo {
 
-    const predictedDifference =
-      prediction.homeScore - prediction.awayScore;
+    // TEMPORARY TEST
+    // Force MTN8 as active competition
+    return COMPETITIONS[CompetitionIds.MTN];
 
-    const actualDifference =
-      (fixture.homeScore ?? 0) - (fixture.awayScore ?? 0);
-
-    if (
-      (predictedDifference > 0 && actualDifference > 0) ||
-      (predictedDifference < 0 && actualDifference < 0) ||
-      (predictedDifference === 0 && actualDifference === 0)
-    ) {
-      correctResult = true;
-      points += 3;
-    }
-
-    if (
-      prediction.homeScore === fixture.homeScore &&
-      prediction.awayScore === fixture.awayScore
-    ) {
-      exactScore = true;
-      points += 2;
-    }
-
-    if (
-      prediction.firstTeamToScore === fixture.firstTeamToScore
-    ) {
-      correctFTTS = true;
-      points += 1;
-    }
-
-    return {
-      ...prediction,
-      points,
-      correctResult,
-      exactScore,
-      correctFTTS,
-    };
   }
 
-  calculateFixturePredictions(
-    predictions: Prediction[],
-    fixture: Fixture
-  ): Prediction[] {
-    return predictions.map((prediction) =>
-      this.calculatePrediction(prediction, fixture)
-    );
+  getCompetition(id: string): CompetitionInfo {
+    return COMPETITIONS[id];
+  }
+
+  getAllCompetitions(): CompetitionInfo[] {
+    return Object.values(COMPETITIONS);
   }
 }
 

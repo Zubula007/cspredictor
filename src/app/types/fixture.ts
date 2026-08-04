@@ -1,8 +1,7 @@
-import type {
-  CompetitionId,
-  FixtureStatusType,
-  FirstTeamToScoreType,
-} from "../lib/enums";
+import type { CompetitionIds } from "../lib/enums";
+
+export type CompetitionId =
+  typeof CompetitionIds[keyof typeof CompetitionIds];
 
 export interface Fixture {
   id: string;
@@ -13,41 +12,32 @@ export interface Fixture {
 
   streak: number;
 
-  /**
-   * ISO date used by the application.
-   * Example: 2026-08-01
-   */
   matchDate: string;
 
-  /**
-   * Friendly date shown to players.
-   * Example: Saturday, 1 August 2026
-   */
-  displayDate: string;
-
-  /**
-   * 24-hour kick-off time.
-   * Example: 18:00
-   */
   kickOff: string;
+
+  displayDate: string;
 
   homeTeam: string;
 
   awayTeam: string;
 
-  homeBadge?: string;
-
-  awayBadge?: string;
-
-  status: FixtureStatusType;
+  status:
+    | "Scheduled"
+    | "Postponed"
+    | "Live"
+    | "Completed"
+    | "Cancelled";
 
   homeScore?: number;
 
   awayScore?: number;
 
-  firstTeamToScore?: FirstTeamToScoreType;
-
-  predictionDeadline?: string;
+  firstTeamToScore?: 
+    | "Home"
+    | "Away"
+    | "None"
+    | null;
 
   published: boolean;
 }

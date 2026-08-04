@@ -4,6 +4,7 @@ import fixtureRepository from "../repositories/fixtureRepository";
 import predictionService, {
   type ScoreFixtureSummary,
 } from "./predictionService";
+import bonusService from "./bonusService";
 
 import type { Fixture } from "../types/fixture";
 import type { FirstTeamToScoreType } from "../lib/enums";
@@ -38,7 +39,6 @@ class FixtureService {
     return fixtureRepository.getByStreak(streak);
   }
 
-
   updateFixture(
     fixtureId: string,
     updates: Partial<Fixture>
@@ -48,7 +48,6 @@ class FixtureService {
       updates
     );
   }
-
 
   updateResult(
     fixtureId: string,
@@ -63,7 +62,6 @@ class FixtureService {
       firstTeamToScore
     );
   }
-
 
   publishResult(
     fixtureId: string,
@@ -85,7 +83,11 @@ class FixtureService {
 
     fixture.status = "Completed";
 
+    // Rescore every prediction for this fixture
     const summary = predictionService.scoreFixture(fixture);
+
+    // Recalculate the round winner bonus
+    bonusService.recalculateRound(fixture.round);
 
     return {
       fixture,

@@ -1,9 +1,9 @@
 import playerRepository from "../repositories/playerRepository";
 import predictionRepository from "../repositories/predictionRepository";
+import bonusRepository from "../repositories/bonusRepository";
+import fixtureRepository from "../repositories/fixtureRepository";
 
 import type { Player } from "../types/player";
-
-const ROUND_WINNER_BONUS = 1;
 
 export interface LeaderboardEntry {
   rank: number;
@@ -25,7 +25,9 @@ export interface LeaderboardEntry {
 
 class LeaderboardService {
 
-  getLeaderboard(): LeaderboardEntry[] {
+  getLeaderboard(
+    competitionId?: string
+  ): LeaderboardEntry[] {
 
     console.log("🏆 Building leaderboard");
 
@@ -34,177 +36,226 @@ class LeaderboardService {
       playerRepository.getActivePlayers();
 
 
-    console.log(
-      "👥 Active players:",
-      players
-    );
-
-
-    const predictions =
+    let predictions =
       predictionRepository.getAll();
 
 
-    console.log(
-      "📊 Stored predictions:",
-      predictions
-    );
-
-
-    const leaderboard = players.map((player) => {
-
-
-      const playerPredictions =
-        predictions.filter(
-          (prediction) =>
-            prediction.playerId === player.id
-        );
-
-
-      console.log(
-        "👤 Player:",
-        player.displayName,
-        "Predictions:",
-        playerPredictions
-      );
-
-
-      console.table(
-        playerPredictions.map((p) => ({
-          fixture: p.fixtureId,
-          prediction: `${p.homeScore}-${p.awayScore}`,
-          points: p.points,
-          correctResult: p.correctResult,
-          exactScore: p.exactScore,
-          correctFTTS: p.correctFTTS,
-          scored: p.scored,
-        }))
-      );
-
-
-      const correctResults =
-        playerPredictions.filter(
-          (prediction) =>
-            prediction.correctResult
-        ).length;
-
-
-      const exactScores =
-        playerPredictions.filter(
-          (prediction) =>
-            prediction.exactScore
-        ).length;
-
-
-      const correctFTTS =
-        playerPredictions.filter(
-          (prediction) =>
-            prediction.correctFTTS
-        ).length;
-
-
-      const predictionPoints =
-        playerPredictions.reduce(
-          (sum, prediction) =>
-            sum + (prediction.points ?? 0),
-          0
-        );
-
-
-      console.log(
-        "📈",
-        player.displayName,
-        "Points:",
-        predictionPoints
-      );
-
-
-      return {
-
-        rank: 0,
-
-        player,
-
-        totalPoints:
-          predictionPoints,
-
-
-        resultPoints:
-          correctResults * 3,
-
-
-        exactPoints:
-          exactScores * 2,
-
-
-        fttsPoints:
-          correctFTTS,
-
-
-        bonusPoints:
-          0,
-
-
-        correctResults,
-
-        exactScores,
-
-        correctFTTS,
-
-
-        movement:
-          "SAME" as const,
-
-      };
-
-    });
+    const fixtures =
+      fixtureRepository.getAll();
 
 
 
     /*
-      Temporary Round Winner Bonus
-      We will remove this after verification
+      Filter predictions by active competition
     */
 
-    const highestScore =
-      Math.max(
-        ...leaderboard.map(
-          (entry) =>
-            entry.totalPoints
-        ),
-        0
-      );
+    if (competitionId) {
+
+      const competitionFixtureIds =
+        fixtures
+          .filter(
+            (fixture) =>
+              fixture.competitionId === competitionId
+          )
+          .map(
+            (fixture) =>
+              fixture.id
+          );
 
 
-    const winners =
-      leaderboard.filter(
-        (entry) =>
-          entry.totalPoints === highestScore
-      );
-
-
-    if (
-      highestScore > 0 &&
-      winners.length === 1
-    ) {
-
-      winners[0].bonusPoints +=
-        ROUND_WINNER_BONUS;
-
-
-      winners[0].totalPoints +=
-        ROUND_WINNER_BONUS;
+      predictions =
+        predictions.filter(
+          (prediction) =>
+            competitionFixtureIds.includes(
+              prediction.fixtureId
+            )
+        );
 
     }
 
 
 
+    /*
+      Cup competitions do not use bonuses
+
+      BET = Betway Premiership
+      MTN = MTN8
+      NED = Nedbank Cup
+      CAR = Carling Knockout
+
+    */
+
+    const isCupCompetition =
+      competitionId &&
+      competitionId !== "BET";
+
+
+
+    const bonuses =
+      bonusRepository.getAll();
+
+
+
+    const leaderboard =
+      players.map((player) => {
+
+
+        const playerPredictions =
+          predictions.filter(
+            (prediction) =>
+              prediction.playerId === player.id
+          );
+
+
+
+        const correctResults =
+          playerPredictions.filter(
+            (prediction) =>
+              prediction.correctResult
+          ).length;
+
+
+
+        const exactScores =
+          playerPredictions.filter(
+            (prediction) =>
+              prediction.exactScore
+          ).length;
+
+
+
+        const correctFTTS =
+          playerPredictions.filter(
+            (prediction) =>
+              prediction.correctFTTS
+          ).length;
+
+
+
+        const predictionPoints =
+          playerPredictions.reduce(
+            (sum, prediction) =>
+              sum + (prediction.points ?? 0),
+            0
+          );
+
+
+
+        const bonusPoints =
+          isCupCompetition
+            ? 0
+            : bonuses
+                .filter(
+                  (bonus) =>
+                    bonus.playerId === player.id
+                )
+                .reduce(
+                  (sum, bonus) =>
+                    sum + bonus.points,
+                  0
+                );
+
+
+
+        return {
+
+          rank: 0,
+
+          player,
+
+
+          totalPoints:
+            predictionPoints +
+            bonusPoints,
+
+
+          resultPoints:
+            correctResults * 3,
+
+
+          exactPoints:
+            exactScores * 2,
+
+
+          fttsPoints:
+            correctFTTS,
+
+
+          bonusPoints,
+
+
+          correctResults,
+
+
+          exactScores,
+
+
+          correctFTTS,
+
+
+          movement:
+            "SAME" as const,
+
+        };
+
+      });
+
+
+
     const finalLeaderboard =
       leaderboard
-        .sort(
-          (a, b) =>
-            b.totalPoints -
+        .sort((a, b) => {
+
+
+          if (
+            b.totalPoints !==
             a.totalPoints
-        )
+          ) {
+
+            return (
+              b.totalPoints -
+              a.totalPoints
+            );
+
+          }
+
+
+
+          if (
+            b.exactScores !==
+            a.exactScores
+          ) {
+
+            return (
+              b.exactScores -
+              a.exactScores
+            );
+
+          }
+
+
+
+          if (
+            b.correctResults !==
+            a.correctResults
+          ) {
+
+            return (
+              b.correctResults -
+              a.correctResults
+            );
+
+          }
+
+
+
+          return (
+            b.correctFTTS -
+            a.correctFTTS
+          );
+
+
+        })
         .map(
           (entry, index) => ({
             ...entry,
@@ -213,10 +264,12 @@ class LeaderboardService {
         );
 
 
+
     console.log(
       "🏆 Final leaderboard:",
       finalLeaderboard
     );
+
 
 
     return finalLeaderboard;
@@ -224,6 +277,7 @@ class LeaderboardService {
   }
 
 }
+
 
 
 const leaderboardService =

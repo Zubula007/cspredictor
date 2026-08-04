@@ -9,7 +9,7 @@ import ConfirmationModal from "./components/ConfirmationModal";
 import fixtureService from "./services/fixtureService";
 import { useFixtures } from "./context/FixtureContext";
 import badges from "./data/badges";
-import competitions from "./data/competitions";
+import competitionService from "./services/competitionService";
 import predictionService from "./services/predictionService";
 import playerRepository from "./repositories/playerRepository";
 
@@ -21,6 +21,8 @@ import leaderboardService from "./services/leaderboardService";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
+const activeCompetition =
+  competitionService.getActiveCompetition();
 
 type Prediction = {
   homeTeam: string;
@@ -41,7 +43,9 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 const [error, setError] = useState("");
 const [showIncomplete, setShowIncomplete] = useState(false);
 const [leaderboard, setLeaderboard] = useState(
-  leaderboardService.getLeaderboard()
+  leaderboardService.getLeaderboard(
+  activeCompetition.id
+)
 );
 const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
   
@@ -51,10 +55,14 @@ const {
   fixtures,
   refreshFixtures,
 } = useFixtures();  
+const competitionFixtures = fixtures.filter(
+  (fixture) =>
+    fixture.competitionId === activeCompetition.id
+);
 
 const [predictions, setPredictions] = useState<Prediction[]>(
 
-    fixtures.map((fixture) => ({
+   competitionFixtures.map((fixture) => ({
   homeTeam: fixture.homeTeam,
   awayTeam: fixture.awayTeam,
 
@@ -63,9 +71,7 @@ const [predictions, setPredictions] = useState<Prediction[]>(
   scoreSelected: false,
 
   firstTeamToScore: null,
-}
-
-    ))
+})) 
 
   );
 
@@ -136,7 +142,7 @@ const [predictions, setPredictions] = useState<Prediction[]>(
 
    const incompletePrediction = predictions.some(
   (prediction, index) => {
-    const fixture = fixtures[index];
+   const fixture = competitionFixtures[index]; 
 
     // Ignore postponed and cancelled fixtures
     if (
@@ -189,9 +195,9 @@ setShowConfirmation(true);
   }
 
   predictions.forEach((prediction, index) => {
-    predictionService.savePlayerPrediction(
-      player.id,
-      fixtures[index].id,
+  predictionService.savePlayerPrediction(
+    player.id,
+    competitionFixtures[index].id,
       prediction.homeScore,
       prediction.awayScore,
       prediction.firstTeamToScore === "HOME"
@@ -230,7 +236,7 @@ setShowConfirmation(true);
 
 };
 
- const availableFixtures = fixtures.filter(
+ const availableFixtures = competitionFixtures.filter(
   (fixture) =>
     fixture.status !== "Postponed" &&
     fixture.status !== "Cancelled"
@@ -238,7 +244,12 @@ setShowConfirmation(true);
 
 const completedPredictions = predictions.filter(
   (prediction, index) => {
-    const fixture = fixtures[index];
+    const fixture = competitionFixtures[index];
+
+    // Safety check when switching competitions
+    if (!fixture) {
+      return false;
+    }
 
     if (
       fixture.status === "Postponed" ||
@@ -252,7 +263,7 @@ const completedPredictions = predictions.filter(
       prediction.firstTeamToScore !== null
     );
   }
-).length; 
+).length;
 
 useEffect(() => {
   const savedPlayer = localStorage.getItem("csp-player");
@@ -298,15 +309,27 @@ useEffect(() => {
 
 useEffect(() => {
   setLeaderboard(
-    leaderboardService.getLeaderboard()
+    leaderboardService.getLeaderboard(
+      activeCompetition.id
+    )
   );
-}, [playerName, predictions]);
+}, [
+  playerName,
+  predictions,
+  activeCompetition.id
+]);
+
 
 useEffect(() => {
   setLeaderboard(
-    leaderboardService.getLeaderboard()
+    leaderboardService.getLeaderboard(
+      activeCompetition.id
+    )
   );
-}, [submitted]);
+}, [
+  submitted,
+  activeCompetition.id
+]);
 
 if (!mounted) {
   return null;
@@ -353,12 +376,22 @@ return (
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
               <p className="text-xs uppercase text-gray-400">
-                Competition
-              </p>
+  Competition
+</p>
 
-              <p className="mt-2 font-bold">
-                Betway Premiership
-              </p>
+<div className="mt-4 flex items-center justify-center gap-4">
+
+ <img
+  src={activeCompetition.logo}
+  alt={activeCompetition.name}
+  className="h-14 w-14 object-contain"
+/> 
+
+  <p className="font-bold">
+    {activeCompetition.name}
+  </p>
+
+</div> 
 
             </div>
 
@@ -369,8 +402,8 @@ return (
               </p>
 
               <p className="mt-2 font-bold">
-                Round 1
-              </p>
+  {competitionFixtures[0]?.round ?? "Current Round"}
+</p>
 
             </div>
 
@@ -402,14 +435,9 @@ return (
 
         <div className="mt-8 space-y-6">
 
-          {fixtures.map((fixture, index) => {
+          {competitionFixtures.map((fixture, index) => {
 
-            const competition = competitions.find(
-
-              (item) =>
-                item.id === fixture.competitionId
-
-            );
+            
 const locked =
   fixture.status !== "Completed"
     ? isFixtureLocked(
@@ -428,13 +456,12 @@ const locked =
   >
     <FixtureCard
   competition={
-    competition?.name ??
-    fixture.competitionId
-  }
+  activeCompetition.name
+}
 
-  competitionLogo={
-    competition?.logo
-  }
+competitionLogo={
+  activeCompetition.logo
+}
 
   matchDate={fixture.matchDate}
 displayDate={fixture.displayDate}
@@ -573,7 +600,7 @@ onPredictionChange={
 
     <p className="mt-4 text-center text-gray-300">
 
-      Your <span className="font-semibold text-yellow-400">Round 1</span> predictions
+      Your <span className="font-semibold text-yellow-400">Current Round</span> predictions
       have been successfully recorded.
 
     </p>
@@ -612,14 +639,15 @@ onPredictionChange={
 
 )} 
 
-        {leaderboard.length > 0 && (
+       {activeCompetition.roundWinnerEnabled &&
+ leaderboard.length > 0 && ( 
   <section className="mb-10">
     <div className="rounded-3xl border border-yellow-400 bg-gradient-to-r from-yellow-500/20 via-zinc-900 to-yellow-500/20 p-8 shadow-xl">
 
       <div className="text-center">
 
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
-          Round 1 Winner
+          🏆 {activeCompetition.name} Leader
         </p>
 
         <h2 className="mt-4 text-5xl">
@@ -636,7 +664,13 @@ onPredictionChange={
 
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div
+  className={`mt-6 grid grid-cols-2 gap-4 ${
+    activeCompetition.monthlyWinnerEnabled
+      ? "md:grid-cols-4"
+      : "md:grid-cols-3"
+  }`}
+>
 
         <div className="rounded-xl border border-green-700 bg-green-900/20 p-4 text-center">
 
@@ -673,17 +707,19 @@ onPredictionChange={
           </p>
 
         </div>
-<div className="rounded-xl border border-purple-600 bg-purple-900/20 p-4 text-center">
+{activeCompetition.monthlyWinnerEnabled && (
+  <div className="rounded-xl border border-purple-600 bg-purple-900/20 p-4 text-center">
 
-  <p className="text-sm text-purple-300">
-    🏅 Bonus
-  </p>
+    <p className="text-sm text-purple-300">
+      🏅 Bonus
+    </p>
 
-  <p className="mt-2 text-3xl font-bold text-purple-400">
-    {leaderboard[0].bonusPoints}
-  </p>
+    <p className="mt-2 text-3xl font-bold text-purple-400">
+      {leaderboard[0].bonusPoints}
+    </p>
 
-</div>
+  </div>
+)}
 
       </div>
 
@@ -693,9 +729,19 @@ onPredictionChange={
 
 <section className="mt-12">
 
-  <h2 className="mb-6 text-center text-3xl font-bold text-yellow-400">
-    🏆 Championship Leaderboard
+  <div className="mb-6 flex items-center justify-center gap-4">
+
+  <img
+    src={activeCompetition.logo}
+    alt={activeCompetition.name}
+    className="h-12 w-12 object-contain"
+  />
+
+  <h2 className="text-3xl font-bold text-yellow-400">
+    {activeCompetition.name} Leaderboard
   </h2>
+
+</div>
 
   {leaderboard.length === 0 ? (
     <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
@@ -743,12 +789,12 @@ onPredictionChange={
               </h3>
 {entry.rank === 1 && (
   <div className="mt-3 inline-flex items-center rounded-full bg-yellow-400 px-4 py-1 text-sm font-bold text-black shadow-lg">
-    👑 League Leader
+    👑 Competition Leader
   </div>
 )}
 
               <p className="mt-2 text-sm uppercase tracking-widest text-yellow-500">
-                Championship Standing
+                {activeCompetition.name} Standing
               </p>
             </div>
 
@@ -773,7 +819,13 @@ onPredictionChange={
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div
+  className={`mt-6 grid grid-cols-2 gap-4 ${
+    activeCompetition.monthlyWinnerEnabled
+      ? "md:grid-cols-4"
+      : "md:grid-cols-3"
+  }`}
+>  
             <div className="rounded-xl bg-green-900/30 border border-green-700 p-4 text-center">
               <p className="text-sm text-green-300">
                 ✅ Result Points
@@ -803,15 +855,19 @@ onPredictionChange={
                 {entry.fttsPoints}
               </p>
             </div>
-<div className="rounded-xl border border-purple-600 bg-purple-900/30 p-4 text-center">
-  <p className="text-sm text-purple-300">
-    🏅 Bonus Points
-  </p>
+{activeCompetition.monthlyWinnerEnabled && (
+  <div className="rounded-xl border border-purple-600 bg-purple-900/30 p-4 text-center">
 
-  <p className="mt-2 text-3xl font-bold text-purple-400">
-    {entry.bonusPoints}
-  </p>
-</div>
+    <p className="text-sm text-purple-300">
+      🏅 Bonus Points
+    </p>
+
+    <p className="mt-2 text-3xl font-bold text-purple-400">
+      {entry.bonusPoints}
+    </p>
+
+  </div>
+)}
           </div>
         </div>
            );
@@ -823,7 +879,7 @@ onPredictionChange={
 <ConfirmationModal
   isOpen={showConfirmation}
   playerName={playerName}
-  round="Round 1"
+  round="Current Round"
   predictions={predictions}
   badges={badges}
   onCancel={() => setShowConfirmation(false)}
@@ -837,6 +893,10 @@ onPredictionChange={
   );
 
 }
+
+
+
+
 
 
 

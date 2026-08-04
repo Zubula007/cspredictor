@@ -5,8 +5,14 @@ import { useEffect, useState } from "react";
 
 import { useFixtures } from "../../../context/FixtureContext";
 
+import competitions from "../../../data/competitions";
+import teams from "../../../data/teams";
+
+import type { CompetitionId } from "../../../types/fixture";
+
 export default function EditFixturePage() {
   const router = useRouter();
+
   const searchParams = useSearchParams();
 
   const {
@@ -14,153 +20,361 @@ export default function EditFixturePage() {
     updateFixture,
   } = useFixtures();
 
-  const fixtureId = searchParams.get("fixture");
+  const fixtureId =
+    searchParams.get("fixture");
 
-  const fixture = fixtures.find(
-    (item) => item.id === fixtureId
-  );
+  const fixture =
+    fixtures.find(
+      (item) =>
+        item.id === fixtureId
+    );
 
-  const [matchDate, setMatchDate] = useState("");
-  const [kickOff, setKickOff] = useState("");
-  const [status, setStatus] = useState("Scheduled");
-  const [published, setPublished] = useState(true);
+  const [competitionId, setCompetitionId] =
+    useState<CompetitionId>("BET");
+
+  const [homeTeam, setHomeTeam] =
+    useState("");
+
+  const [awayTeam, setAwayTeam] =
+    useState("");
+
+  const [matchDate, setMatchDate] =
+    useState("");
+
+  const [kickOff, setKickOff] =
+    useState("");
+
+  const [round, setRound] =
+    useState(1);
+
+  const [status, setStatus] =
+    useState("Scheduled");
+
+  const [published, setPublished] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     if (!fixture) return;
 
-    setMatchDate(fixture.matchDate);
-    setKickOff(fixture.kickOff ?? "");
-    setStatus(fixture.status);
-    setPublished(fixture.published);
+    setCompetitionId(
+      fixture.competitionId
+    );
+
+    setHomeTeam(
+      fixture.homeTeam
+    );
+
+    setAwayTeam(
+      fixture.awayTeam
+    );
+
+    setMatchDate(
+      fixture.matchDate
+    );
+
+    setKickOff(
+      fixture.kickOff
+    );
+
+    setRound(
+      fixture.round
+    );
+
+    setStatus(
+      fixture.status
+    );
+
+    setPublished(
+      fixture.published
+    );
+
   }, [fixture]);
 
   if (!fixture) {
     return (
-      <main className="min-h-screen bg-black p-6 text-white">
-        <div className="mx-auto max-w-xl rounded-xl border border-red-500 bg-zinc-900 p-6 text-center">
-          <h1 className="text-2xl font-bold text-red-400">
+      <main className="min-h-screen bg-black px-6 py-10 text-white">
+
+        <div className="mx-auto max-w-xl rounded-2xl border border-red-500 bg-zinc-900 p-8 text-center">
+
+          <h1 className="text-3xl font-bold text-red-400">
             Fixture Not Found
           </h1>
 
-          <p className="mt-3 text-gray-300">
-            Please select a valid fixture to edit.
+          <p className="mt-4 text-gray-300">
+            The selected fixture could not be found.
           </p>
+
         </div>
+
       </main>
     );
   }
 
+  // ✅ TypeScript now knows the fixture exists
   const currentFixture = fixture;
 
   function saveChanges() {
-    updateFixture(currentFixture.id, {
-      matchDate,
-      kickOff,
-      status: status as typeof currentFixture.status,
-      published,
-    });
 
-    alert("Fixture updated successfully ✅");
+    if (homeTeam === awayTeam) {
 
-    router.push("/admin/fixtures");
+      setMessage(
+        "Home Team and Away Team cannot be the same."
+      );
+
+      return;
+
+    }
+
+    updateFixture(
+      currentFixture.id,
+      {
+        competitionId,
+
+        homeTeam,
+
+        awayTeam,
+
+        round,
+
+        streak: round,
+
+        matchDate,
+
+        kickOff,
+
+        displayDate:
+          new Date(matchDate).toLocaleDateString(
+            "en-ZA",
+            {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }
+          ),
+
+        status:
+          status as typeof currentFixture.status,
+
+        published,
+      }
+    );
+
+    setMessage(
+      "✅ Fixture updated successfully."
+    );
+
+    setTimeout(() => {
+
+      router.push(
+        "/admin/fixtures"
+      );
+
+    }, 1200);
+
   }
 
   return (
-    <main className="min-h-screen bg-black px-6 py-10 text-white">
-      <div className="mx-auto max-w-xl rounded-2xl border border-yellow-500 bg-zinc-900 p-6">
 
-        <h1 className="mb-6 text-center text-3xl font-bold text-yellow-400">
+    <main className="min-h-screen bg-black px-6 py-10 text-white">
+
+      <div className="mx-auto max-w-2xl rounded-3xl border border-yellow-500 bg-zinc-900 p-8 shadow-xl">
+
+        <h1 className="text-center text-4xl font-extrabold text-yellow-400">
           ✏️ Edit Fixture
         </h1>
 
-        <div className="mb-6 text-center">
-          <h2 className="text-xl font-bold">
-            {currentFixture.homeTeam}
-          </h2>
+        <div className="mt-8 space-y-5">
 
-          <p className="my-2 font-bold text-yellow-400">
-            VS
-          </p>
-
-          <h2 className="text-xl font-bold">
-            {currentFixture.awayTeam}
-          </h2>
-        </div>
-
-        <label className="mb-2 block">
-          Match Date
-        </label>
-
-        <input
-          type="date"
-          value={matchDate}
-          onChange={(e) => setMatchDate(e.target.value)}
-          className="mb-5 w-full rounded bg-white p-2 text-black"
-        />
-
-        <label className="mb-2 block">
-          Kick-off Time
-        </label>
-
-        <input
-          type="time"
-          value={kickOff}
-          onChange={(e) => setKickOff(e.target.value)}
-          className="mb-5 w-full rounded bg-white p-2 text-black"
-        />
-
-        <label className="mb-2 block">
-          Status
-        </label>
-
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="mb-5 w-full rounded bg-white p-2 text-black"
-        >
-          <option value="Scheduled">
-            Scheduled
-          </option>
-
-          <option value="Live">
-            Live
-          </option>
-
-          <option value="Completed">
-            Completed
-          </option>
-
-          <option value="Postponed">
-            Postponed
-          </option>
-
-          <option value="Cancelled">
-            Cancelled
-          </option>
-        </select>
-
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={published}
+          <select
+            value={competitionId}
             onChange={(e) =>
-              setPublished(e.target.checked)
+              setCompetitionId(
+                e.target.value as CompetitionId
+              )
             }
+            className="w-full rounded-xl bg-black p-3"
+          >
+
+            {competitions.map(
+              (competition) => (
+
+                <option
+                  key={competition.id}
+                  value={competition.id}
+                >
+                  {competition.name}
+                </option>
+
+              )
+            )}
+
+          </select>
+
+          <select
+            value={homeTeam}
+            onChange={(e) =>
+              setHomeTeam(
+                e.target.value
+              )
+            }
+            className="w-full rounded-xl bg-black p-3"
+          >
+
+            {teams.map(
+              (team) => (
+
+                <option
+                  key={team.name}
+                  value={team.name}
+                >
+                  {team.name}
+                </option>
+
+              )
+            )}
+
+          </select>
+
+          <select
+            value={awayTeam}
+            onChange={(e) =>
+              setAwayTeam(
+                e.target.value
+              )
+            }
+            className="w-full rounded-xl bg-black p-3"
+          >
+
+            {teams.map(
+              (team) => (
+
+                <option
+                  key={team.name}
+                  value={team.name}
+                >
+                  {team.name}
+                </option>
+
+              )
+            )}
+
+          </select>          <div className="grid grid-cols-2 gap-4">
+
+            <input
+              type="date"
+              value={matchDate}
+              onChange={(e) =>
+                setMatchDate(
+                  e.target.value
+                )
+              }
+              className="rounded-xl bg-black p-3"
+            />
+
+            <input
+              type="time"
+              value={kickOff}
+              onChange={(e) =>
+                setKickOff(
+                  e.target.value
+                )
+              }
+              className="rounded-xl bg-black p-3"
+            />
+
+          </div>
+
+          <input
+            type="number"
+            min={1}
+            value={round}
+            onChange={(e) =>
+              setRound(
+                Number(e.target.value)
+              )
+            }
+            className="w-full rounded-xl bg-black p-3"
+            placeholder="Round"
           />
 
-          <span>
-            Fixture Published
-          </span>
-        </label>
+          <select
+            value={status}
+            onChange={(e) =>
+              setStatus(
+                e.target.value
+              )
+            }
+            className="w-full rounded-xl bg-black p-3"
+          >
 
-        <button
-          onClick={saveChanges}
-          className="mt-8 w-full rounded-xl bg-yellow-500 p-3 font-bold text-black hover:bg-yellow-400"
-        >
-          💾 Save Changes
-        </button>
+            <option value="Scheduled">
+              Scheduled
+            </option>
+
+            <option value="Live">
+              Live
+            </option>
+
+            <option value="Completed">
+              Completed
+            </option>
+
+            <option value="Postponed">
+              Postponed
+            </option>
+
+            <option value="Cancelled">
+              Cancelled
+            </option>
+
+          </select>
+
+          <label className="flex items-center gap-3 rounded-xl border border-yellow-500 bg-black p-4">
+
+            <input
+              type="checkbox"
+              checked={published}
+              onChange={(e) =>
+                setPublished(
+                  e.target.checked
+                )
+              }
+            />
+
+            <span className="font-medium">
+              Fixture Published
+            </span>
+
+          </label>
+
+          <button
+            onClick={saveChanges}
+            className="w-full rounded-xl bg-yellow-400 py-4 font-bold text-black transition hover:bg-yellow-300"
+          >
+            💾 Save Changes
+          </button>
+
+          {message && (
+
+            <div className="rounded-xl border border-green-500 bg-green-900/20 p-4 text-center">
+
+              <p className="font-semibold text-green-300">
+                {message}
+              </p>
+
+            </div>
+
+          )}
+
+        </div>
 
       </div>
+
     </main>
+
   );
+
 }

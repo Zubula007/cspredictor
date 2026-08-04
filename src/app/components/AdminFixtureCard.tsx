@@ -10,6 +10,7 @@ type AdminFixtureCardProps = {
   kickOff?: string;
   status: string;
   competition: string;
+  onDelete: () => void;
 };
 
 export default function AdminFixtureCard({
@@ -20,6 +21,7 @@ export default function AdminFixtureCard({
   kickOff,
   status,
   competition,
+  onDelete,
 }: AdminFixtureCardProps) {
   const statusStyle =
     status === "Scheduled"
@@ -49,11 +51,9 @@ export default function AdminFixtureCard({
 
       </div>
 
-
       <p className="mt-2 text-sm text-gray-400">
         {competition}
       </p>
-
 
       <div className="my-6 text-center">
 
@@ -71,7 +71,6 @@ export default function AdminFixtureCard({
 
       </div>
 
-
       <div className="rounded-xl bg-black p-4">
 
         <p className="text-sm text-gray-400">
@@ -84,8 +83,7 @@ export default function AdminFixtureCard({
 
       </div>
 
-
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <div className="mt-6 grid grid-cols-3 gap-3">
 
         <Link
           href={`/admin/fixtures/edit?fixture=${id}`}
@@ -94,7 +92,6 @@ export default function AdminFixtureCard({
           ✏️ Edit
         </Link>
 
-
         <Link
           href={`/admin/results?fixture=${id}`}
           className="rounded-xl bg-green-600 py-3 text-center font-bold text-white transition hover:bg-green-500"
@@ -102,8 +99,15 @@ export default function AdminFixtureCard({
           📢 Publish
         </Link>
 
-      </div>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded-xl bg-red-600 py-3 text-center font-bold text-white transition hover:bg-red-500"
+        >
+          🗑 Delete
+        </button>
 
+      </div>
 
     </div>
   );

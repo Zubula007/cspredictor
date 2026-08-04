@@ -138,6 +138,33 @@ class FixtureRepository {
     return fixture;
   }
 
+  deleteFixture(
+    fixtureId: string
+  ): boolean {
+
+    this.refreshFixtures();
+
+    const originalLength =
+      this.fixtures.length;
+
+    this.fixtures =
+      this.fixtures.filter(
+        (fixture) =>
+          fixture.id !== fixtureId
+      );
+
+    if (
+      this.fixtures.length ===
+      originalLength
+    ) {
+      return false;
+    }
+
+    this.saveFixtures();
+
+    return true;
+  }
+
   updateResult(
     fixtureId: string,
     homeScore: number,

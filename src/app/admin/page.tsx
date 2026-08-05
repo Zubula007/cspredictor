@@ -30,6 +30,11 @@ const adminCards = [
     href: "/leaderboard",
   },
   {
+    title: "🧪 QA Toolkit",
+    description: "Reset test data for end-to-end QA.",
+    href: "/admin/qa",
+  },
+  {
     title: "⚙️ Settings",
     description: "League configuration and preferences.",
     href: "/admin/settings",

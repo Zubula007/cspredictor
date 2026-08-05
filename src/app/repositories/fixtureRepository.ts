@@ -118,6 +118,8 @@ class FixtureRepository {
     fixtureId: string,
     updates: Partial<Fixture>
   ): Fixture | undefined {
+    this.refreshFixtures();
+
     const fixture =
       this.fixtures.find(
         (item) =>
@@ -154,8 +156,7 @@ class FixtureRepository {
       );
 
     if (
-      this.fixtures.length ===
-      originalLength
+      this.fixtures.length === originalLength
     ) {
       return false;
     }
@@ -171,6 +172,9 @@ class FixtureRepository {
     awayScore: number,
     firstTeamToScore: FirstTeamToScoreType
   ): Fixture | undefined {
+
+    this.refreshFixtures();
+
     const fixture =
       this.fixtures.find(
         (item) =>
@@ -190,6 +194,36 @@ class FixtureRepository {
     this.saveFixtures();
 
     return fixture;
+  }
+
+  /**
+   * QA TOOLKIT RESET
+   *
+   * Returns fixtures to a fresh testing state:
+   * - Removes published results
+   * - Unlocks fixtures
+   * - Clears official scores
+   */
+  resetFixtures(): void {
+    this.refreshFixtures();
+
+    this.fixtures = this.fixtures.map(
+      (fixture) => ({
+        ...fixture,
+
+        published: false,
+
+        status: "Scheduled",
+
+        homeScore: undefined,
+
+        awayScore: undefined,
+
+        firstTeamToScore: undefined,
+      })
+    );
+
+    this.saveFixtures();
   }
 }
 

@@ -24,33 +24,25 @@ export interface LeaderboardEntry {
 }
 
 class LeaderboardService {
-
   getLeaderboard(
     competitionId?: string
   ): LeaderboardEntry[] {
-
     console.log("🏆 Building leaderboard");
-
 
     const players =
       playerRepository.getActivePlayers();
 
-
     let predictions =
       predictionRepository.getAll();
 
-
     const fixtures =
       fixtureRepository.getAll();
-
-
 
     /*
       Filter predictions by active competition
     */
 
     if (competitionId) {
-
       const competitionFixtureIds =
         fixtures
           .filter(
@@ -62,7 +54,6 @@ class LeaderboardService {
               fixture.id
           );
 
-
       predictions =
         predictions.filter(
           (prediction) =>
@@ -70,10 +61,7 @@ class LeaderboardService {
               prediction.fixtureId
             )
         );
-
     }
-
-
 
     /*
       Cup competitions do not use bonuses
@@ -82,31 +70,22 @@ class LeaderboardService {
       MTN = MTN8
       NED = Nedbank Cup
       CAR = Carling Knockout
-
     */
 
     const isCupCompetition =
       competitionId &&
       competitionId !== "BET";
 
-
-
     const bonuses =
       bonusRepository.getAll();
 
-
-
     const leaderboard =
       players.map((player) => {
-
-
         const playerPredictions =
           predictions.filter(
             (prediction) =>
               prediction.playerId === player.id
           );
-
-
 
         const correctResults =
           playerPredictions.filter(
@@ -114,15 +93,11 @@ class LeaderboardService {
               prediction.correctResult
           ).length;
 
-
-
         const exactScores =
           playerPredictions.filter(
             (prediction) =>
               prediction.exactScore
           ).length;
-
-
 
         const correctFTTS =
           playerPredictions.filter(
@@ -130,16 +105,12 @@ class LeaderboardService {
               prediction.correctFTTS
           ).length;
 
-
-
         const predictionPoints =
           playerPredictions.reduce(
             (sum, prediction) =>
               sum + (prediction.points ?? 0),
             0
           );
-
-
 
         const bonusPoints =
           isCupCompetition
@@ -155,106 +126,88 @@ class LeaderboardService {
                   0
                 );
 
-
-
         return {
-
           rank: 0,
 
           player,
-
 
           totalPoints:
             predictionPoints +
             bonusPoints,
 
-
           resultPoints:
             correctResults * 3,
-
 
           exactPoints:
             exactScores * 2,
 
-
           fttsPoints:
             correctFTTS,
 
-
           bonusPoints,
-
 
           correctResults,
 
-
           exactScores,
-
 
           correctFTTS,
 
-
           movement:
             "SAME" as const,
-
         };
-
       });
-
-
 
     const finalLeaderboard =
       leaderboard
         .sort((a, b) => {
-
-
+          // 1. Total Points
           if (
             b.totalPoints !==
             a.totalPoints
           ) {
-
             return (
               b.totalPoints -
               a.totalPoints
             );
-
           }
 
-
-
+          // 2. Exact Score Points
           if (
-            b.exactScores !==
-            a.exactScores
+            b.exactPoints !==
+            a.exactPoints
           ) {
-
             return (
-              b.exactScores -
-              a.exactScores
+              b.exactPoints -
+              a.exactPoints
             );
-
           }
 
-
-
+          // 3. FTTS Bonus Points
           if (
-            b.correctResults !==
-            a.correctResults
+            b.fttsPoints !==
+            a.fttsPoints
           ) {
-
             return (
-              b.correctResults -
-              a.correctResults
+              b.fttsPoints -
+              a.fttsPoints
             );
-
           }
 
+          // 4. Bonus Points
+          if (
+            b.bonusPoints !==
+            a.bonusPoints
+          ) {
+            return (
+              b.bonusPoints -
+              a.bonusPoints
+            );
+          }
 
-
-          return (
-            b.correctFTTS -
-            a.correctFTTS
+          // 5. Alphabetical
+          return a.player.displayName.localeCompare(
+            b.player.displayName
           );
-
-
         })
         .map(
           (entry, index) => ({
@@ -263,25 +216,16 @@ class LeaderboardService {
           })
         );
 
-
-
     console.log(
       "🏆 Final leaderboard:",
       finalLeaderboard
     );
 
-
-
     return finalLeaderboard;
-
   }
-
 }
-
-
 
 const leaderboardService =
   new LeaderboardService();
-
 
 export default leaderboardService;

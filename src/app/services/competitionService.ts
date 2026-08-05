@@ -44,13 +44,10 @@ const COMPETITIONS: Record<string, CompetitionInfo> = {
 };
 
 class CompetitionService {
-
   getActiveCompetition(): CompetitionInfo {
-
-    // TEMPORARY TEST
-    // Force MTN8 as active competition
-    return COMPETITIONS[CompetitionIds.MTN];
-
+    // TEMPORARY QA
+    // Force Betway Premiership as the active competition
+    return COMPETITIONS[CompetitionIds.BET];
   }
 
   getCompetition(id: string): CompetitionInfo {

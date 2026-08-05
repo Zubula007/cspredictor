@@ -102,7 +102,12 @@ export default function FixtureCard({
     );
   };
 
-  const interactionLocked = false;
+  const interactionLocked =
+  locked ||
+  status === "Postponed" ||
+  status === "Live" ||
+  status === "Completed" ||
+  status === "Cancelled";
 console.log({
   homeTeam,
   status,
@@ -212,21 +217,14 @@ console.log({
   result &&
   correctResult &&
   (
-    (result.homeScore === 0 &&
-      result.awayScore === 0 &&
-      userPrediction.firstTeamToScore === "NONE") ||
-
-    (result.homeScore > 0 &&
-      result.awayScore === 0 &&
+    (result.firstTeamToScore === "Home" &&
       userPrediction.firstTeamToScore === "HOME") ||
 
-    (result.awayScore > 0 &&
-      result.homeScore === 0 &&
+    (result.firstTeamToScore === "Away" &&
       userPrediction.firstTeamToScore === "AWAY") ||
 
-    (result.homeScore > 0 &&
-      result.awayScore > 0 &&
-      userPrediction.firstTeamToScore !== "NONE")
+    (result.firstTeamToScore === "None" &&
+      userPrediction.firstTeamToScore === "NONE")
   );
 
 const totalPoints =
@@ -574,6 +572,8 @@ if (totalPoints === 6) {
     </div>
   );
 }
+
+
 
 
 

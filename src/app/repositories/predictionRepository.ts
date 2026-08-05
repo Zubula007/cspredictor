@@ -39,55 +39,64 @@ class PredictionRepository {
     return this.getStoredPredictions();
   }
 
-  getByPlayer(playerId: string): Prediction[] {
+  getByPlayer(
+    playerId: string
+  ): Prediction[] {
     return this.getAll().filter(
       (prediction) =>
         prediction.playerId === playerId
     );
   }
 
-  getByFixture(fixtureId: string): Prediction[] {
+  getByFixture(
+    fixtureId: string
+  ): Prediction[] {
     return this.getAll().filter(
       (prediction) =>
         prediction.fixtureId === fixtureId
     );
   }
 
-  save(prediction: Prediction): void {
-  const predictions =
-    this.getStoredPredictions();
+  save(
+    prediction: Prediction
+  ): void {
+    const predictions =
+      this.getStoredPredictions();
 
-  console.log("=================================");
-  console.log("Saving:", prediction.id);
+    console.log("=================================");
+    console.log("Saving:", prediction.id);
 
-  console.log(
-    "Existing IDs:",
-    predictions.map((p) => p.id)
-  );
-
-  const existingIndex =
-    predictions.findIndex(
-      (item) =>
-        item.id === prediction.id
+    console.log(
+      "Existing IDs:",
+      predictions.map((p) => p.id)
     );
 
-  console.log("Found index:", existingIndex);
+    const existingIndex =
+      predictions.findIndex(
+        (item) =>
+          item.id === prediction.id
+      );
 
-  if (existingIndex >= 0) {
-    predictions[existingIndex] =
-      prediction;
+    console.log(
+      "Found index:",
+      existingIndex
+    );
 
-    console.log("UPDATED");
-  } else {
-    predictions.push(prediction);
+    if (existingIndex >= 0) {
+      predictions[existingIndex] =
+        prediction;
 
-    console.log("CREATED");
+      console.log("UPDATED");
+    } else {
+      predictions.push(prediction);
+
+      console.log("CREATED");
+    }
+
+    this.saveStoredPredictions(
+      predictions
+    );
   }
-
-  this.saveStoredPredictions(
-    predictions
-  );
-}
 
   updateScoredPrediction(
     predictionId: string,
@@ -124,11 +133,13 @@ class PredictionRepository {
 
     return prediction;
   }
+
+  reset(): void {
+    this.saveStoredPredictions([]);
+  }
 }
 
 const predictionRepository =
   new PredictionRepository();
 
 export default predictionRepository;
-
-

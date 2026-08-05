@@ -75,6 +75,10 @@ class BonusRepository {
 
     this.saveStored(bonuses);
   }
+
+  reset(): void {
+    this.saveStored([]);
+  }
 }
 
 export default new BonusRepository();

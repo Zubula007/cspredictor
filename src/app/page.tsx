@@ -21,6 +21,9 @@ import leaderboardService from "./services/leaderboardService";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
+const QA_MODE =
+  typeof window !== "undefined" &&
+  localStorage.getItem("csp-qa-mode") === "true";
 const activeCompetition =
   competitionService.getActiveCompetition();
 
@@ -160,17 +163,26 @@ return (
   }
 ); 
 
-   if (incompletePrediction) {
+  const qaMode =
+  localStorage.getItem("csp-qa-mode") === "true";
 
+const ignoreValidation =
+  localStorage.getItem(
+    "csp-ignore-validation"
+  ) === "true";
+
+if (
+  incompletePrediction &&
+  !(qaMode && ignoreValidation)
+) {
   setShowIncomplete(true);
 
   setError(
-  "Please complete all scheduled fixtures before submitting your predictions."
-);
+    "Please complete all scheduled fixtures before submitting your predictions."
+  );
 
   return;
-
-} 
+}
 
     setShowIncomplete(false);
 
@@ -319,7 +331,6 @@ useEffect(() => {
   activeCompetition.id
 ]);
 
-
 useEffect(() => {
   setLeaderboard(
     leaderboardService.getLeaderboard(
@@ -438,13 +449,23 @@ return (
           {competitionFixtures.map((fixture, index) => {
 
             
+const qaMode =
+  localStorage.getItem("csp-qa-mode") === "true";
+
+const ignoreLock =
+  localStorage.getItem(
+    "csp-ignore-lock"
+  ) === "true";
+
 const locked =
-  fixture.status !== "Completed"
-    ? isFixtureLocked(
+  fixture.status === "Completed"
+    ? true
+    : qaMode && ignoreLock
+    ? false
+    : isFixtureLocked(
         fixture.matchDate,
         fixture.kickOff
-      )
-    : true;
+      );
 
             return (
 
@@ -893,6 +914,9 @@ onPredictionChange={
   );
 
 }
+
+
+
 
 
 

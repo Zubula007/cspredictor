@@ -5,25 +5,19 @@ import { useEffect, useRef, useState } from "react";
 import PlayerForm from "./components/PlayerForm";
 import FixtureCard from "./components/FixtureCard";
 import ConfirmationModal from "./components/ConfirmationModal";
-
-import fixtureService from "./services/fixtureService";
 import { useFixtures } from "./context/FixtureContext";
 import badges from "./data/badges";
 import competitionService from "./services/competitionService";
 import predictionService from "./services/predictionService";
 import playerRepository from "./repositories/playerRepository";
 
-import { PredictionStatus } from "./lib/enums";
 import { isFixtureLocked } from "./lib/predictionLock";
 
-import type { Prediction as SavedPrediction } from "./types/prediction";
 import leaderboardService from "./services/leaderboardService";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
-const QA_MODE =
-  typeof window !== "undefined" &&
-  localStorage.getItem("csp-qa-mode") === "true";
+export default function Home() {
 const activeCompetition =
   competitionService.getActiveCompetition();
 
@@ -36,21 +30,20 @@ type Prediction = {
   firstTeamToScore: FTTSOption;
 };
 
-export default function Home() {
-
-  const [playerName, setPlayerName] = useState("");
+ const [playerName, setPlayerName] = useState("");
 const [submitted, setSubmitted] = useState(false);
 
 const [submittedAt, setSubmittedAt] = useState<string | null>(null);
 const [showConfirmation, setShowConfirmation] = useState(false);
 const [error, setError] = useState("");
 const [showIncomplete, setShowIncomplete] = useState(false);
-const [leaderboard, setLeaderboard] = useState(
-  leaderboardService.getLeaderboard(
-  activeCompetition.id
-)
-);
-const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+const [leaderboard, setLeaderboard] = useState<any[]>([]);
+
+const [qaMode, setQaMode] = useState(false);
+const [ignoreLock, setIgnoreLock] = useState(false);
+
+const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]); 
   
 const [mounted, setMounted] = useState(false);
 
@@ -283,6 +276,14 @@ useEffect(() => {
   const savedSubmitted = localStorage.getItem("csp-submitted");
   const savedSubmittedAt = localStorage.getItem("csp-submittedAt");
 
+  setQaMode(
+    localStorage.getItem("csp-qa-mode") === "true"
+  );
+
+  setIgnoreLock(
+    localStorage.getItem("csp-ignore-lock") === "true"
+  );
+
   if (savedPlayer) {
     setPlayerName(savedPlayer);
   }
@@ -446,18 +447,9 @@ return (
 
         <div className="mt-8 space-y-6">
 
-          {competitionFixtures.map((fixture, index) => {
+         {competitionFixtures.map((fixture, index) => {
 
-            
-const qaMode =
-  localStorage.getItem("csp-qa-mode") === "true";
-
-const ignoreLock =
-  localStorage.getItem(
-    "csp-ignore-lock"
-  ) === "true";
-
-const locked =
+const locked = 
   fixture.status === "Completed"
     ? true
     : qaMode && ignoreLock
@@ -914,6 +906,7 @@ onPredictionChange={
   );
 
 }
+
 
 
 

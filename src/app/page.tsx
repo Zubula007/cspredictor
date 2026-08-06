@@ -13,7 +13,9 @@ import playerRepository from "./repositories/playerRepository";
 
 import { isFixtureLocked } from "./lib/predictionLock";
 
-import leaderboardService from "./services/leaderboardService";
+import leaderboardService, {
+  type LeaderboardEntry,
+} from "./services/leaderboardService";
 
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
@@ -38,7 +40,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 const [error, setError] = useState("");
 const [showIncomplete, setShowIncomplete] = useState(false);
 
-const [leaderboard, setLeaderboard] = useState<any[]>([]);
+const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
 const [qaMode, setQaMode] = useState(false);
 const [ignoreLock, setIgnoreLock] = useState(false);
@@ -47,10 +49,7 @@ const fixtureRefs = useRef<(HTMLDivElement | null)[]>([]);
   
 const [mounted, setMounted] = useState(false);
 
-const {
-  fixtures,
-  refreshFixtures,
-} = useFixtures();  
+const { fixtures } = useFixtures();
 const competitionFixtures = fixtures.filter(
   (fixture) =>
     fixture.competitionId === activeCompetition.id
@@ -906,6 +905,8 @@ onPredictionChange={
   );
 
 }
+
+
 
 
 

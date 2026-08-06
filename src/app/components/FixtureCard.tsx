@@ -347,9 +347,9 @@ if (totalPoints === 6) {
       />
     )}
 
-    <p className="text-center text-[11px] font-semibold leading-tight text-white md:text-sm">
-      {homeTeam}
-    </p>
+    <p className="text-center text-[10px] font-semibold leading-tight text-white md:text-sm">
+  {homeTeam}
+</p>
 
   </div>
 
@@ -425,9 +425,9 @@ if (totalPoints === 6) {
       />
     )}
 
-    <p className="text-center text-[11px] font-semibold leading-tight text-white md:text-sm">
-      {awayTeam}
-    </p>
+    <p className="text-center text-[10px] font-semibold leading-tight text-white md:text-sm">
+  {awayTeam}
+</p>
 
   </div>
 
@@ -450,19 +450,25 @@ if (totalPoints === 6) {
       {status === "Completed" && result && (
         <div className="mt-6 rounded-xl border border-green-500 bg-green-950/20 p-4">
 
-          <h3 className="mb-4 text-center text-lg font-bold text-green-400">
+          <h3 className="mb-4 text-center text-base font-bold text-green-400 md:text-lg">
             ✅ Full Time Result
           </h3>
 
-          <div className="flex items-center justify-center gap-3 text-2xl font-bold text-white">
-            <span>{homeTeam}</span>
+          <div className="grid grid-cols-3 items-center gap-2 text-center text-sm font-bold text-white md:text-2xl">
 
-            <span className="rounded-lg bg-black px-3 py-1 text-yellow-400">
-              {result.homeScore} - {result.awayScore}
-            </span>
+  <span className="leading-tight">
+    {homeTeam}
+  </span>
 
-            <span>{awayTeam}</span>
-          </div>
+  <span className="rounded-lg bg-black px-3 py-1 text-lg text-yellow-400 md:text-2xl">
+    {result.homeScore} - {result.awayScore}
+  </span>
+
+  <span className="leading-tight">
+    {awayTeam}
+  </span>
+
+</div>
 <div className="mt-4 rounded-lg border border-blue-500/30 bg-blue-950/20 p-3 text-center">
   <p className="text-sm text-gray-400">
     ⚽ First Team To Score
@@ -503,17 +509,17 @@ if (totalPoints === 6) {
       {performanceEmoji}
     </p>
 
-    <h3 className="mt-2 text-2xl font-bold text-yellow-400">
+    <h3 className="mt-2 text-xl font-bold text-yellow-400 md:text-2xl">
       {performanceTitle}
     </h3>
 
-    <p className="mt-2 text-xl tracking-widest text-yellow-300">
+    <p className="mt-2 text-lg tracking-widest text-yellow-300 md:text-xl">
       {performanceStars}
     </p>
 
-    <p className="mt-4 text-3xl font-extrabold text-green-400">
-      +{totalPoints} Points
-    </p>
+   <p className="mt-4 text-2xl font-extrabold text-green-400 md:text-3xl">
+  +{totalPoints} Points
+</p> 
 
   </div>
 
@@ -584,6 +590,8 @@ if (totalPoints === 6) {
     </div>
   );
 }
+
+
 
 
 

@@ -384,27 +384,23 @@ return (
 
             </div>
 
-            <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
-
-              <p className="text-xs uppercase text-gray-400">
-  Competition
-</p>
-
-<div className="mt-4 flex items-center justify-center gap-4">
-
- <img
-  src={activeCompetition.logo}
-  alt={activeCompetition.name}
-  className="h-14 w-14 object-contain"
-/> 
-
-  <p className="font-bold">
-    {activeCompetition.name}
+           <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
+  <p className="text-xs uppercase text-gray-400">
+    Competition
   </p>
 
-</div> 
+  <div className="mt-4 flex items-center justify-center">
+    <img
+      src={activeCompetition.logo}
+      alt={activeCompetition.name}
+      className="h-14 w-14 object-contain"
+    />
 
-            </div>
+    <p className="ml-3 hidden font-bold md:block">
+      {activeCompetition.name}
+    </p>
+  </div>
+</div> 
 
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
@@ -590,13 +586,11 @@ onPredictionChange={
 
   <div className="mt-6 rounded-2xl border border-green-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-xl">
 
-    <h2 className="text-center text-3xl font-bold text-green-400">
+    <h2 className="text-center text-xl font-bold text-green-400 md:text-3xl">
+  🏆 Predictions Submitted!
+</h2>
 
-      🏆 Predictions Submitted!
-
-    </h2>
-
-    <p className="mt-5 text-center text-xl">
+    <p className="mt-5 text-center text-base md:text-xl">
 
       Good luck,{" "}
 
@@ -610,7 +604,7 @@ onPredictionChange={
 
     </p>
 
-    <p className="mt-4 text-center text-gray-300">
+    <p className="mt-4 text-center text-sm text-gray-300 md:text-base">
 
       Your <span className="font-semibold text-yellow-400">Current Round</span> predictions
       have been successfully recorded.
@@ -627,7 +621,7 @@ onPredictionChange={
 
         </p>
 
-        <p className="mt-1 font-bold text-yellow-400">
+        <p className="mt-1 text-sm font-bold text-yellow-400 md:text-base">
 
           📅 {submittedAt}
 
@@ -666,7 +660,7 @@ onPredictionChange={
           🏆
         </h2>
 
-        <h3 className="mt-3 text-4xl font-extrabold text-yellow-400">
+        <h3 className="mt-3 text-3xl font-extrabold md:text-4xl text-yellow-400">
           {leaderboard[0].player.displayName}
         </h3>
 
@@ -690,7 +684,7 @@ onPredictionChange={
             ✅ Results
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-green-400">
+          <p className="mt-2 text-2xl font-bold md:text-3xl text-green-400">
             {leaderboard[0].resultPoints}
           </p>
 
@@ -741,7 +735,7 @@ onPredictionChange={
 
 <section className="mt-12">
 
-  <div className="mb-6 flex items-center justify-center gap-4">
+ <div className="mb-6 flex items-center justify-center gap-3">
 
   <img
     src={activeCompetition.logo}
@@ -749,11 +743,22 @@ onPredictionChange={
     className="h-12 w-12 object-contain"
   />
 
-  <h2 className="text-3xl font-bold text-yellow-400">
-    {activeCompetition.name} Leaderboard
+  <h2 className="text-2xl font-bold text-yellow-400 md:text-3xl">
+    <span className="hidden md:inline">
+      {activeCompetition.name}
+    </span>
+
+    <span className="md:hidden">
+      Leaderboard
+    </span>
+
+    <span className="hidden md:inline">
+      {" "}Leaderboard
+    </span>
+
   </h2>
 
-</div>
+</div> 
 
   {leaderboard.length === 0 ? (
     <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
@@ -785,11 +790,11 @@ onPredictionChange={
   return (
         <div
           key={entry.player.id}
-          className={`rounded-2xl border bg-gradient-to-br from-zinc-900 to-black p-6 shadow-lg transition hover:scale-[1.01] ${cardStyle}`}
+          className={`rounded-2xl border bg-gradient-to-br from-zinc-900 to-black p-4 md:p-6 shadow-lg transition hover:scale-[1.01] ${cardStyle}`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-2xl font-bold ${titleColor}`}>
+              <h3 className={`text-xl font-bold md:text-2xl ${titleColor}`}>
                 {entry.rank === 1
                   ? "🥇"
                   : entry.rank === 2
@@ -805,9 +810,15 @@ onPredictionChange={
   </div>
 )}
 
-              <p className="mt-2 text-sm uppercase tracking-widest text-yellow-500">
-                {activeCompetition.name} Standing
-              </p>
+              <p className="mt-2 text-xs uppercase tracking-widest text-yellow-500 md:text-sm">
+  <span className="hidden md:inline">
+    {activeCompetition.name} Standing
+  </span>
+
+  <span className="md:hidden">
+    Standing
+  </span>
+</p>
             </div>
 
             <div className="text-right">
@@ -816,7 +827,7 @@ onPredictionChange={
               </p>
 
               <p
-  className={`text-4xl font-extrabold ${
+  className={`text-3xl font-extrabold md:text-4xl ${
     entry.rank === 1
       ? "text-yellow-400"
       : entry.rank === 2
@@ -840,7 +851,7 @@ onPredictionChange={
 >  
             <div className="rounded-xl bg-green-900/30 border border-green-700 p-4 text-center">
               <p className="text-sm text-green-300">
-                ✅ Result Points
+                ✅ Result 
               </p>
 
               <p className="mt-2 text-3xl font-bold text-green-400">
@@ -850,7 +861,7 @@ onPredictionChange={
 
             <div className="rounded-xl bg-yellow-500/10 border border-yellow-500 p-4 text-center">
               <p className="text-sm text-yellow-300">
-                🎯 Exact Points
+                🎯 Exact 
               </p>
 
               <p className="mt-2 text-3xl font-bold text-yellow-400">
@@ -860,7 +871,7 @@ onPredictionChange={
 
             <div className="rounded-xl bg-blue-900/30 border border-blue-600 p-4 text-center">
               <p className="text-sm text-blue-300">
-                ⚽ FTTS Bonus
+                ⚽ FTTS 
               </p>
 
               <p className="mt-2 text-3xl font-bold text-blue-400">
@@ -871,7 +882,7 @@ onPredictionChange={
   <div className="rounded-xl border border-purple-600 bg-purple-900/30 p-4 text-center">
 
     <p className="text-sm text-purple-300">
-      🏅 Bonus Points
+      🏅 Bonus
     </p>
 
     <p className="mt-2 text-3xl font-bold text-purple-400">
@@ -905,6 +916,8 @@ onPredictionChange={
   );
 
 }
+
+
 
 
 

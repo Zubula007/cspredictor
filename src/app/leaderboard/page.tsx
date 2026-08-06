@@ -18,14 +18,16 @@ export default function LeaderboardPage() {
     if (rank === 2) return "🥈";
     if (rank === 3) return "🥉";
 
-    return rank;
+    return `#${rank}`;
   };
 
   if (!mounted) {
     return (
       <main className="min-h-screen bg-black p-6 text-white">
-        <div className="text-center text-yellow-400">
-          Loading leaderboard...
+        <div className="mx-auto max-w-7xl">
+          <p className="text-center text-gray-400">
+            Loading leaderboard...
+          </p>
         </div>
       </main>
     );
@@ -33,120 +35,90 @@ export default function LeaderboardPage() {
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
-      <div className="mx-auto max-w-4xl rounded-xl border border-yellow-500 bg-zinc-900 p-6">
+      <div className="mx-auto max-w-7xl">
 
-        <h1 className="mb-8 text-center text-3xl font-bold text-yellow-400">
+        <h1 className="mb-6 text-center text-2xl font-bold text-yellow-400 md:text-3xl">
           🏆 CSPredictor Championship Table
         </h1>
 
-        <table className="w-full border-collapse">
+        {leaderboard.length === 0 ? (
+          <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center text-gray-400">
+            No leaderboard data available yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-yellow-500 bg-zinc-900 shadow-lg">
 
-          <thead>
-            <tr className="border-b border-yellow-500 text-yellow-400">
+            <table className="min-w-full border-collapse">
 
-              <th className="p-3 text-left">
-                Rank
-              </th>
+              <thead>
+                <tr className="border-b border-yellow-500 bg-black text-yellow-400">
 
-              <th className="p-3 text-left">
-                Player
-              </th>
+                  <th className="p-3 text-left text-sm">
+                    Rank
+                  </th>
 
-              <th className="p-3 text-center">
-                Total Points
-              </th>
+                  <th className="p-3 text-left text-sm">
+                    Player
+                  </th>
 
-              <th className="p-3 text-center">
-                ⚽ Result Points
-              </th>
+                  <th className="p-3 text-center text-sm">
+                    Total
+                  </th>
 
-              <th className="p-3 text-center">
-                🎯 Exact Points
-              </th>
+                  <th className="p-3 text-center text-sm">
+                    Result
+                  </th>
 
-              <th className="p-3 text-center">
-                🔥 FTTS Points
-              </th>
+                  <th className="p-3 text-center text-sm">
+                    Exact
+                  </th>
 
-            </tr>
-          </thead>
-
-
-          <tbody>
-
-            {leaderboard.map((entry) => {
-
-              const resultPoints =
-                entry.resultPoints;
-
-              const exactPoints =
-                entry.exactPoints;
-
-              const fttsPoints =
-                entry.fttsPoints;
-
-
-              return (
-                <tr
-                  key={entry.player.id}
-                  className="
-                    border-b
-                    border-zinc-700
-                    transition
-                    hover:bg-zinc-800
-                  "
-                >
-
-                  <td className="p-4 text-xl font-bold">
-                    {getMedal(entry.rank)}
-                  </td>
-
-
-                  <td className="p-4 font-semibold">
-                    {entry.player.displayName}
-                  </td>
-
-
-                  <td
-                    className="
-                      p-4
-                      text-center
-                      text-xl
-                      font-bold
-                      text-yellow-400
-                    "
-                  >
-                    {entry.totalPoints} pts
-                  </td>
-
-
-                  <td className="p-4 text-center">
-                    ⚽ {resultPoints} pts
-                  </td>
-
-
-                  <td className="p-4 text-center">
-                    🎯 {exactPoints} pts
-                  </td>
-
-
-                  <td className="p-4 text-center">
-                    🔥 {fttsPoints} pts
-                  </td>
-
+                  <th className="p-3 text-center text-sm">
+                    FTTS
+                  </th>
 
                 </tr>
-              );
-            })}
+              </thead>
 
-          </tbody>
+              <tbody>
 
-        </table>
+                {leaderboard.map((entry) => (
+                  <tr
+                    key={entry.player.id}
+                    className="border-b border-zinc-700 hover:bg-zinc-800"
+                  >
 
+                    <td className="p-3 text-lg font-bold whitespace-nowrap">
+                      {getMedal(entry.rank)}
+                    </td>
 
-        {leaderboard.length === 0 && (
-          <div className="py-8 text-center text-zinc-400">
-            No leaderboard data available yet.
+                    <td className="p-3 font-semibold whitespace-nowrap">
+                      {entry.player.displayName}
+                    </td>
+
+                    <td className="p-3 text-center text-lg font-bold text-yellow-400">
+                      {entry.totalPoints}
+                    </td>
+
+                    <td className="p-3 text-center whitespace-nowrap">
+                      {entry.resultPoints}
+                    </td>
+
+                    <td className="p-3 text-center whitespace-nowrap">
+                      {entry.exactPoints}
+                    </td>
+
+                    <td className="p-3 text-center whitespace-nowrap">
+                      {entry.fttsPoints}
+                    </td>
+
+                  </tr>
+                ))}
+
+              </tbody>
+
+            </table>
+
           </div>
         )}
 

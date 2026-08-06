@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import playerRepository from "../repositories/playerRepository";
 import competitionService from "../services/competitionService";
@@ -42,6 +43,11 @@ const adminCards = [
 ];
 
 export default function AdminDashboardPage() {
+const [mounted, setMounted] = useState(false);
+
+useEffect(() => {
+  setMounted(true);
+}, []);
   const players = playerRepository.getActivePlayers();
 
   const { fixtures } = useFixtures();
@@ -68,6 +74,9 @@ export default function AdminDashboardPage() {
     (fixture) =>
       fixture.competitionId === activeCompetition.id
   );
+if (!mounted) {
+  return null;
+}
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
@@ -75,13 +84,13 @@ export default function AdminDashboardPage() {
 
         <div className="mb-10 text-center">
 
-          <h1 className="text-5xl font-extrabold text-yellow-400">
-            ⚙️ Admin Dashboard
-          </h1>
+          <h1 className="text-3xl font-bold text-yellow-400 md:text-4xl">
+  ⚙️ Admin Dashboard
+</h1>
 
-          <p className="mt-3 text-gray-400">
-            Championship Score Predictor Administration
-          </p>
+          <p className="mt-2 text-sm text-gray-400">
+  Championship Score Predictor Administration
+</p>
 
         </div>
 
@@ -89,13 +98,13 @@ export default function AdminDashboardPage() {
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-xl">
 
-          <h2 className="text-center text-3xl font-bold text-yellow-400">
-            🏆 Active Competition
-          </h2>
+         <h2 className="text-center text-xl font-bold text-yellow-400 md:text-2xl">
+  🏆 Active Competition
+</h2> 
 
-          <p className="mt-4 text-center text-2xl font-bold">
-            {activeCompetition.name}
-          </p>
+          <p className="mt-3 text-center text-lg font-bold">
+  {activeCompetition.name}
+</p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
 
@@ -164,7 +173,7 @@ export default function AdminDashboardPage() {
               👥 Active Players
             </p>
 
-            <p className="mt-2 text-4xl font-bold text-yellow-400">
+            <p className="mt-2 text-2xl font-bold text-yellow-400">
               {players.length}
             </p>
           </div>
@@ -174,7 +183,7 @@ export default function AdminDashboardPage() {
               ⚽ Fixtures
             </p>
 
-            <p className="mt-2 text-4xl font-bold text-yellow-400">
+            <p className="mt-2 text-2xl font-bold text-yellow-400">
               {competitionFixtures.length}
             </p>
           </div>
@@ -184,7 +193,7 @@ export default function AdminDashboardPage() {
               🏆 Competition Leader
             </p>
 
-            <p className="mt-2 text-xl font-bold text-yellow-400">
+            <p className="mt-2 text-lg font-bold text-yellow-400">
               {leaderboard.length > 0
                 ? leaderboard[0].player.displayName
                 : "-"}
@@ -196,7 +205,7 @@ export default function AdminDashboardPage() {
               📢 Pending Results
             </p>
 
-            <p className="mt-2 text-4xl font-bold text-yellow-400">
+            <p className="mt-2 text-2xl font-bold text-yellow-400">
               {pendingResults}
             </p>
           </div>
@@ -206,7 +215,7 @@ export default function AdminDashboardPage() {
               ✅ Published Results
             </p>
 
-            <p className="mt-2 text-4xl font-bold text-yellow-400">
+            <p className="mt-2 text-2xl font-bold text-yellow-400">
               {publishedResults}
             </p>
           </div>
@@ -223,11 +232,11 @@ export default function AdminDashboardPage() {
               className="rounded-2xl border border-yellow-500 bg-gradient-to-br from-zinc-900 to-black p-6 shadow-lg transition hover:scale-105 hover:border-yellow-400"
             >
 
-              <h2 className="text-2xl font-bold text-yellow-400">
+              <h2 className="text-lg font-bold text-yellow-400">
                 {card.title}
               </h2>
 
-              <p className="mt-3 text-gray-300">
+              <p className="mt-2 text-sm text-gray-300">
                 {card.description}
               </p>
 
@@ -241,3 +250,4 @@ export default function AdminDashboardPage() {
     </main>
   );
 }
+

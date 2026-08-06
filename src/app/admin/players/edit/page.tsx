@@ -3,9 +3,15 @@
 import { Suspense } from "react";
 import EditPlayer from "./EditPlayer";
 
-export default function EditPlayerPage() {
+export default function Page() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-black flex items-center justify-center text-white">
+          Loading...
+        </main>
+      }
+    >
       <EditPlayer />
     </Suspense>
   );

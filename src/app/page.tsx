@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react"; 
 
 import PlayerForm from "./components/PlayerForm";
@@ -735,168 +736,147 @@ onPredictionChange={
 
 <section className="mt-12">
 
- <div className="mb-6 flex items-center justify-center gap-3">
+  <div className="mb-6 flex items-center justify-center gap-3">
 
-  <img
-    src={activeCompetition.logo}
-    alt={activeCompetition.name}
-    className="h-12 w-12 object-contain"
-  />
+    <img
+      src={activeCompetition.logo}
+      alt={activeCompetition.name}
+      className="h-12 w-12 object-contain"
+    />
 
-  <h2 className="text-2xl font-bold text-yellow-400 md:text-3xl">
-    <span className="hidden md:inline">
-      {activeCompetition.name}
-    </span>
+    <h2 className="text-2xl font-bold text-yellow-400 md:text-3xl">
+      Top 3 Leaderboard
+    </h2>
 
-    <span className="md:hidden">
-      Leaderboard
-    </span>
-
-    <span className="hidden md:inline">
-      {" "}Leaderboard
-    </span>
-
-  </h2>
-
-</div> 
+  </div>
 
   {leaderboard.length === 0 ? (
+
     <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
-      <p className="text-lg text-gray-400">
+      <p className="text-gray-400">
         No scores available yet.
       </p>
     </div>
-  ) : (
-    <div className="space-y-5">
-      {leaderboard.map((entry) => {
-  const cardStyle =
-    entry.rank === 1
-      ? "border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.35)]"
-      : entry.rank === 2
-      ? "border-gray-300"
-      : entry.rank === 3
-      ? "border-amber-700"
-      : "border-yellow-500";
 
-  const titleColor =
-    entry.rank === 1
-      ? "text-yellow-400"
-      : entry.rank === 2
-      ? "text-gray-200"
-      : entry.rank === 3
-      ? "text-amber-500"
-      : "text-white";
+) : ( 
+<>
+    <div className="overflow-x-auto rounded-2xl border border-yellow-500 bg-zinc-900 shadow-lg">
 
-  return (
-        <div
-          key={entry.player.id}
-          className={`rounded-2xl border bg-gradient-to-br from-zinc-900 to-black p-4 md:p-6 shadow-lg transition hover:scale-[1.01] ${cardStyle}`}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className={`text-xl font-bold md:text-2xl ${titleColor}`}>
+      <table className="min-w-full border-collapse">
+
+        <thead>
+
+          <tr className="border-b border-yellow-500 bg-black text-yellow-400">
+
+            <th className="p-3 text-left text-sm">
+              Rank
+            </th>
+
+            <th className="p-3 text-left text-sm">
+              Player
+            </th>
+
+            <th className="p-3 text-center text-sm">
+              Total
+            </th>
+
+            <th className="p-3 text-center text-sm">
+              Result
+            </th>
+
+            <th className="p-3 text-center text-sm">
+              Exact
+            </th>
+
+            <th className="p-3 text-center text-sm">
+  FTTS
+</th>
+
+{activeCompetition.monthlyWinnerEnabled && (
+  <th className="p-3 text-center text-sm">
+    Bonus
+  </th>
+)}
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {leaderboard.slice(0, 3).map((entry) => (
+
+            <tr
+              key={entry.player.id}
+              className="border-b border-zinc-700 hover:bg-zinc-800"
+            >
+
+              <td className="p-3 font-bold whitespace-nowrap">
+
                 {entry.rank === 1
                   ? "🥇"
                   : entry.rank === 2
                   ? "🥈"
-                  : entry.rank === 3
-                  ? "🥉"
-                  : `#${entry.rank}`}{" "}
+                  : "🥉"}
+
+              </td>
+
+              <td className="p-3 font-semibold whitespace-nowrap">
+
                 {entry.player.displayName}
-              </h3>
-{entry.rank === 1 && (
-  <div className="mt-3 inline-flex items-center rounded-full bg-yellow-400 px-4 py-1 text-sm font-bold text-black shadow-lg">
-    👑 Competition Leader
-  </div>
-)}
 
-              <p className="mt-2 text-xs uppercase tracking-widest text-yellow-500 md:text-sm">
-  <span className="hidden md:inline">
-    {activeCompetition.name} Standing
-  </span>
+              </td>
 
-  <span className="md:hidden">
-    Standing
-  </span>
-</p>
-            </div>
+              <td className="p-3 text-center text-lg font-bold text-yellow-400">
 
-            <div className="text-right">
-              <p className="text-sm uppercase text-gray-400">
-                Total Points
-              </p>
-
-              <p
-  className={`text-3xl font-extrabold md:text-4xl ${
-    entry.rank === 1
-      ? "text-yellow-400"
-      : entry.rank === 2
-      ? "text-gray-200"
-      : entry.rank === 3
-      ? "text-amber-500"
-      : "text-yellow-400"
-  }`}
->
                 {entry.totalPoints}
-              </p>
-            </div>
-          </div>
 
-        <div
-  className={`mt-6 grid grid-cols-2 gap-4 ${
-    activeCompetition.monthlyWinnerEnabled
-      ? "md:grid-cols-4"
-      : "md:grid-cols-3"
-  }`}
->  
-            <div className="rounded-xl bg-green-900/30 border border-green-700 p-4 text-center">
-              <p className="text-sm text-green-300">
-                ✅ Result 
-              </p>
+              </td>
 
-              <p className="mt-2 text-3xl font-bold text-green-400">
+              <td className="p-3 text-center">
+
                 {entry.resultPoints}
-              </p>
-            </div>
 
-            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500 p-4 text-center">
-              <p className="text-sm text-yellow-300">
-                🎯 Exact 
-              </p>
+              </td>
 
-              <p className="mt-2 text-3xl font-bold text-yellow-400">
+              <td className="p-3 text-center">
+
                 {entry.exactPoints}
-              </p>
-            </div>
 
-            <div className="rounded-xl bg-blue-900/30 border border-blue-600 p-4 text-center">
-              <p className="text-sm text-blue-300">
-                ⚽ FTTS 
-              </p>
+              </td>
 
-              <p className="mt-2 text-3xl font-bold text-blue-400">
-                {entry.fttsPoints}
-              </p>
-            </div>
+              <td className="p-3 text-center">
+  {entry.fttsPoints}
+</td>
+
 {activeCompetition.monthlyWinnerEnabled && (
-  <div className="rounded-xl border border-purple-600 bg-purple-900/30 p-4 text-center">
-
-    <p className="text-sm text-purple-300">
-      🏅 Bonus
-    </p>
-
-    <p className="mt-2 text-3xl font-bold text-purple-400">
-      {entry.bonusPoints}
-    </p>
-
-  </div>
+  <td className="p-3 text-center">
+    {entry.bonusPoints}
+  </td>
 )}
-          </div>
-        </div>
-           );
-    })} 
-    </div>
-  )}
+
+            </tr>
+
+          ))}
+
+        </tbody>
+
+</table>
+
+</div>
+
+<div className="mt-6 text-center">
+  <Link
+    href="/leaderboard"
+    className="inline-flex items-center rounded-xl border border-yellow-500 bg-yellow-500/10 px-6 py-3 font-semibold text-yellow-400 transition hover:bg-yellow-500 hover:text-black"
+  >
+    View Full Leaderboard →
+  </Link>
+</div>
+
+</>
+
+)}
 </section>
 
 <ConfirmationModal
@@ -916,6 +896,8 @@ onPredictionChange={
   );
 
 }
+
+
 
 
 

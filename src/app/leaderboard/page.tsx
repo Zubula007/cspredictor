@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 
+import competitionService from "../services/competitionService";
 import { useLeaderboard } from "../context/LeaderboardContext";
 
 export default function LeaderboardPage() {
   const { leaderboard } = useLeaderboard();
+
+  const activeCompetition =
+    competitionService.getActiveCompetition();
 
   const [mounted, setMounted] = useState(false);
 
@@ -13,29 +17,25 @@ export default function LeaderboardPage() {
     setMounted(true);
   }, []);
 
-  const getMedal = (rank: number) => {
-    if (rank === 1) return "🥇";
-    if (rank === 2) return "🥈";
-    if (rank === 3) return "🥉";
-
+  const getRank = (rank: number) => {
     return `#${rank}`;
   };
 
   if (!mounted) {
     return (
-      <main className="min-h-screen bg-black p-6 text-white">
-        <div className="mx-auto max-w-7xl">
-          <p className="text-center text-gray-400">
+      <main className="min-h-screen bg-black px-6 py-10 text-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center text-gray-400">
             Loading leaderboard...
-          </p>
+          </div>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black p-6 text-white">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen bg-black px-6 py-10 text-white">
+      <div className="mx-auto max-w-6xl">
 
         <h1 className="mb-6 text-center text-2xl font-bold text-yellow-400 md:text-3xl">
           🏆 CSPredictor Championship Table
@@ -77,6 +77,12 @@ export default function LeaderboardPage() {
                     FTTS
                   </th>
 
+                  {activeCompetition.monthlyWinnerEnabled && (
+                    <th className="p-3 text-center text-sm">
+                      Bonus
+                    </th>
+                  )}
+
                 </tr>
               </thead>
 
@@ -89,7 +95,7 @@ export default function LeaderboardPage() {
                   >
 
                     <td className="p-3 text-lg font-bold whitespace-nowrap">
-                      {getMedal(entry.rank)}
+                      {getRank(entry.rank)}
                     </td>
 
                     <td className="p-3 font-semibold whitespace-nowrap">
@@ -111,6 +117,12 @@ export default function LeaderboardPage() {
                     <td className="p-3 text-center whitespace-nowrap">
                       {entry.fttsPoints}
                     </td>
+
+                    {activeCompetition.monthlyWinnerEnabled && (
+                      <td className="p-3 text-center whitespace-nowrap">
+                        {entry.bonusPoints}
+                      </td>
+                    )}
 
                   </tr>
                 ))}

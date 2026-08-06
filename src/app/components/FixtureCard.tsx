@@ -332,94 +332,102 @@ if (totalPoints === 6) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 items-center gap-3 md:gap-6">
-        {/* HOME */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6">
 
-        <div className="flex flex-col items-center">
-          {homeLogo && (
-            <Image
-              src={homeLogo}
-              alt={homeTeam}
-              width={72}
-              height={72}
-              className="mb-1 h-12 w-12 object-contain md:mb-2 md:h-[72px] md:w-[72px]"
-            />
-          )}
+  {/* HOME */}
+  <div className="flex flex-col items-center">
+    {homeLogo && (
+      <Image
+        src={homeLogo}
+        alt={homeTeam}
+        width={80}
+        height={80}
+        className="mb-3 h-16 w-16 object-contain md:h-20 md:w-20"
+      />
+    )}
 
-          <p className="text-center text-xs font-semibold text-white md:text-base">
-            {homeTeam}
-          </p>
-        </div>
-                {/* SCORE */}
+    <p className="text-center text-sm font-semibold text-white leading-tight">
+      {homeTeam}
+    </p>
+  </div>
 
-        <div className="flex items-center justify-center gap-3 md:gap-8">
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={increaseHome}
-              disabled={interactionLocked}
-              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
-            >
-              +
-            </button>
+  {/* SCORE CONTROLS */}
+  <div className="flex items-center justify-center gap-4">
 
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-xl font-bold text-black md:h-14 md:w-14 md:text-2xl">
-              {userPrediction.homeScore}
-            </div>
+    {/* HOME SCORE */}
+    <div className="flex flex-col items-center">
 
-            <button
-              onClick={decreaseHome}
-              disabled={interactionLocked}
-              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
-            >
-              −
-            </button>
-          </div>
+      <button
+        onClick={increaseHome}
+        disabled={interactionLocked}
+        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+      >
+        +
+      </button>
 
-          <p className="text-2xl font-extrabold text-yellow-400">
-            VS
-          </p>
-
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={increaseAway}
-              disabled={interactionLocked}
-              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
-            >
-              +
-            </button>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-xl font-bold text-black md:h-14 md:w-14 md:text-2xl">
-              {userPrediction.awayScore}
-            </div>
-
-            <button
-              onClick={decreaseAway}
-              disabled={interactionLocked}
-              className="h-8 w-8 rounded-full bg-yellow-500 text-lg font-bold text-black transition hover:scale-105 md:h-10 md:w-10 md:text-2xl disabled:opacity-40"
-            >
-              −
-            </button>
-          </div>
-        </div>
-
-        {/* AWAY */}
-
-        <div className="flex flex-col items-center">
-          {awayLogo && (
-            <Image
-              src={awayLogo}
-              alt={awayTeam}
-              width={72}
-              height={72}
-              className="mb-1 h-12 w-12 object-contain md:mb-2 md:h-[72px] md:w-[72px]"
-            />
-          )}
-
-          <p className="text-center text-xs font-semibold text-white md:text-base">
-            {awayTeam}
-          </p>
-        </div>
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-3xl font-bold text-black shadow">
+        {userPrediction.homeScore}
       </div>
+
+      <button
+        onClick={decreaseHome}
+        disabled={interactionLocked}
+        className="mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+      >
+        −
+      </button>
+
+    </div>
+
+    <div className="px-2 text-3xl font-extrabold text-yellow-400">
+      VS
+    </div>
+
+    {/* AWAY SCORE */}
+    <div className="flex flex-col items-center">
+
+      <button
+        onClick={increaseAway}
+        disabled={interactionLocked}
+        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+      >
+        +
+      </button>
+
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-3xl font-bold text-black shadow">
+        {userPrediction.awayScore}
+      </div>
+
+      <button
+        onClick={decreaseAway}
+        disabled={interactionLocked}
+        className="mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+      >
+        −
+      </button>
+
+    </div>
+
+  </div>
+
+  {/* AWAY */}
+  <div className="flex flex-col items-center">
+    {awayLogo && (
+      <Image
+        src={awayLogo}
+        alt={awayTeam}
+        width={80}
+        height={80}
+        className="mb-3 h-16 w-16 object-contain md:h-20 md:w-20"
+      />
+    )}
+
+    <p className="text-center text-sm font-semibold text-white leading-tight">
+      {awayTeam}
+    </p>
+  </div>
+
+</div>
 
       <FTTSSelector
         homeTeam={homeTeam}
@@ -572,6 +580,7 @@ if (totalPoints === 6) {
     </div>
   );
 }
+
 
 
 

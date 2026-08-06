@@ -332,27 +332,29 @@ if (totalPoints === 6) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6">
+      <div className="grid grid-cols-[0.9fr_auto_0.9fr] items-start gap-1 md:gap-6">
 
   {/* HOME */}
-  <div className="flex flex-col items-center">
+  <div className="flex flex-col items-center px-1">
+
     {homeLogo && (
       <Image
         src={homeLogo}
         alt={homeTeam}
-        width={80}
-        height={80}
-        className="mb-3 h-16 w-16 object-contain md:h-20 md:w-20"
+        width={56}
+        height={56}
+        className="mb-2 h-12 w-12 object-contain md:h-20 md:w-20"
       />
     )}
 
-    <p className="text-center text-sm font-semibold text-white leading-tight">
+    <p className="text-center text-[11px] font-semibold leading-tight text-white md:text-sm">
       {homeTeam}
     </p>
+
   </div>
 
   {/* SCORE CONTROLS */}
-  <div className="flex items-center justify-center gap-4">
+  <div className="flex items-center justify-center gap-2">
 
     {/* HOME SCORE */}
     <div className="flex flex-col items-center">
@@ -360,26 +362,26 @@ if (totalPoints === 6) {
       <button
         onClick={increaseHome}
         disabled={interactionLocked}
-        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+        className="mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-yellow-500 text-base font-bold text-black disabled:opacity-40 md:h-9 md:w-9 md:text-xl"
       >
         +
       </button>
 
-      <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-3xl font-bold text-black shadow">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-yellow-500 bg-white text-xl font-bold text-black md:h-14 md:w-14 md:text-3xl">
         {userPrediction.homeScore}
       </div>
 
       <button
         onClick={decreaseHome}
         disabled={interactionLocked}
-        className="mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+        className="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-yellow-500 text-base font-bold text-black disabled:opacity-40 md:h-9 md:w-9 md:text-xl"
       >
         −
       </button>
 
     </div>
 
-    <div className="px-2 text-3xl font-extrabold text-yellow-400">
+    <div className="px-1 text-lg font-extrabold text-yellow-400 md:px-3 md:text-3xl">
       VS
     </div>
 
@@ -389,19 +391,19 @@ if (totalPoints === 6) {
       <button
         onClick={increaseAway}
         disabled={interactionLocked}
-        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+        className="mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-yellow-500 text-base font-bold text-black disabled:opacity-40 md:h-9 md:w-9 md:text-xl"
       >
         +
       </button>
 
-      <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-yellow-500 bg-white text-3xl font-bold text-black shadow">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-yellow-500 bg-white text-xl font-bold text-black md:h-14 md:w-14 md:text-3xl">
         {userPrediction.awayScore}
       </div>
 
       <button
         onClick={decreaseAway}
         disabled={interactionLocked}
-        className="mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 text-xl font-bold text-black disabled:opacity-40"
+        className="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-yellow-500 text-base font-bold text-black disabled:opacity-40 md:h-9 md:w-9 md:text-xl"
       >
         −
       </button>
@@ -411,20 +413,22 @@ if (totalPoints === 6) {
   </div>
 
   {/* AWAY */}
-  <div className="flex flex-col items-center">
+  <div className="flex flex-col items-center px-1">
+
     {awayLogo && (
       <Image
         src={awayLogo}
         alt={awayTeam}
-        width={80}
-        height={80}
-        className="mb-3 h-16 w-16 object-contain md:h-20 md:w-20"
+        width={56}
+        height={56}
+        className="mb-2 h-12 w-12 object-contain md:h-20 md:w-20"
       />
     )}
 
-    <p className="text-center text-sm font-semibold text-white leading-tight">
+    <p className="text-center text-[11px] font-semibold leading-tight text-white md:text-sm">
       {awayTeam}
     </p>
+
   </div>
 
 </div>
@@ -580,6 +584,7 @@ if (totalPoints === 6) {
     </div>
   );
 }
+
 
 
 

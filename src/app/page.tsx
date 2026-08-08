@@ -10,8 +10,8 @@ import CompetitionSelector from "./components/CompetitionSelector";
 import { useFixtures } from "./context/FixtureContext";
 import badges from "./data/badges";
 import predictionService from "./services/predictionService";
-import playerRepository from "./repositories/playerRepository";
 import { useCompetition } from "./context/CompetitionContext";
+import authService from "./services/authService";
 
 import { isFixtureLocked } from "./lib/predictionLock";
 
@@ -186,8 +186,7 @@ setShowConfirmation(true);
   };
 
   const confirmSubmission = () => {
-  const player =
-    playerRepository.getByDisplayName(playerName.trim());
+  const player = authService.getCurrentPlayer();
 
   if (!player) {
     setError(
@@ -372,10 +371,19 @@ return (
   <main className="min-h-screen bg-black px-6 py-10 text-white">
 
       <div className="mx-auto max-w-5xl">
+<div className="mb-6 flex justify-end">
+  <Link
+    href="/login"
+    className="inline-flex items-center rounded-xl border border-yellow-500 bg-yellow-500/10 px-5 py-3 font-bold text-yellow-400 transition hover:bg-yellow-400 hover:text-black"
+  >
+    🔐 Login
+  </Link>
+</div>
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-2xl">
 
           <h1 className="text-center text-3xl font-extrabold text-yellow-400 sm:text-4xl md:text-5xl">
+
   🏆 Championship Score Predictor
 </h1>
 
@@ -918,6 +926,7 @@ onPredictionChange={
   );
 
 }
+
 
 
 

@@ -38,8 +38,8 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="border-b border-yellow-500/20 bg-black px-4 py-4">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4">
+    <nav className="mb-8">
+      <div className="flex flex-col items-center justify-center gap-4">
 
         {/* Navigation */}
         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -55,7 +55,7 @@ export default function Navbar() {
             href="/fixtures"
             className={linkClass("/fixtures")}
           >
-            ⚽ Fixtures
+            ⚽ Match Centre
           </Link>
 
           <Link
@@ -99,23 +99,19 @@ export default function Navbar() {
             <select
               value={activeCompetition.id}
               onChange={(event) =>
-                setActiveCompetition(
-                  event.target.value
-                )
+                setActiveCompetition(event.target.value)
               }
               className="rounded-xl border border-yellow-500 bg-zinc-900 px-4 py-2 text-sm font-bold text-yellow-400 outline-none transition hover:bg-zinc-800 focus:ring-2 focus:ring-yellow-400"
             >
-              {competitions.map(
-                (competition) => (
-                  <option
-                    key={competition.id}
-                    value={competition.id}
-                    className="bg-zinc-900 text-white"
-                  >
-                    {competition.name}
-                  </option>
-                )
-              )}
+              {competitions.map((competition) => (
+                <option
+                  key={competition.id}
+                  value={competition.id}
+                  className="bg-zinc-900 text-white"
+                >
+                  {competition.name}
+                </option>
+              ))}
             </select>
 
           </div>

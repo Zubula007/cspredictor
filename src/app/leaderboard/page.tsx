@@ -2,22 +2,43 @@
 
 import { useEffect, useState } from "react";
 
-import competitionService from "../services/competitionService";
 import { useLeaderboard } from "../context/LeaderboardContext";
+import { useCompetition } from "../context/CompetitionContext";
 
 export default function LeaderboardPage() {
-  const { leaderboard } = useLeaderboard();
+  const {
+    leaderboard,
+    setCompetitionId,
+  } = useLeaderboard();
 
-  const activeCompetition =
-    competitionService.getActiveCompetition();
+  const { activeCompetition } =
+    useCompetition();
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] =
+    useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const getRank = (rank: number) => {
+  useEffect(() => {
+    if (!activeCompetition?.id) {
+      return;
+    }
+
+    setCompetitionId(
+      activeCompetition.id
+    );
+  }, [
+    activeCompetition?.id,
+    setCompetitionId,
+  ]);
+
+  const getMedal = (rank: number) => {
+    if (rank === 1) return "🥇";
+    if (rank === 2) return "🥈";
+    if (rank === 3) return "🥉";
+
     return `#${rank}`;
   };
 
@@ -25,8 +46,10 @@ export default function LeaderboardPage() {
     return (
       <main className="min-h-screen bg-black px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-          <div className="text-center text-gray-400">
-            Loading leaderboard...
+          <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
+            <p className="text-yellow-400">
+              Loading leaderboard...
+            </p>
           </div>
         </div>
       </main>
@@ -35,22 +58,38 @@ export default function LeaderboardPage() {
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
+
       <div className="mx-auto max-w-6xl">
 
-        <h1 className="mb-6 text-center text-2xl font-bold text-yellow-400 md:text-3xl">
-          🏆 CSPredictor Championship Table
-        </h1>
+        <div className="mb-8 flex items-center justify-center gap-3">
+
+          <img
+            src={activeCompetition.logo}
+            alt={activeCompetition.name}
+            className="h-12 w-12 object-contain"
+          />
+
+          <h1 className="text-center text-2xl font-bold text-yellow-400 md:text-3xl">
+            🏆 {activeCompetition.name} Championship Table
+          </h1>
+
+        </div>
 
         {leaderboard.length === 0 ? (
+
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center text-gray-400">
-            No leaderboard data available yet.
+            No leaderboard data available for{" "}
+            {activeCompetition.name} yet.
           </div>
+
         ) : (
+
           <div className="overflow-x-auto rounded-2xl border border-yellow-500 bg-zinc-900 shadow-lg">
 
             <table className="min-w-full border-collapse">
 
               <thead>
+
                 <tr className="border-b border-yellow-500 bg-black text-yellow-400">
 
                   <th className="p-3 text-left text-sm">
@@ -84,57 +123,64 @@ export default function LeaderboardPage() {
                   )}
 
                 </tr>
+
               </thead>
 
               <tbody>
 
-                {leaderboard.map((entry) => (
-                  <tr
-                    key={entry.player.id}
-                    className="border-b border-zinc-700 hover:bg-zinc-800"
-                  >
+                {leaderboard.map(
+                  (entry) => (
 
-                    <td className="p-3 text-lg font-bold whitespace-nowrap">
-                      {getRank(entry.rank)}
-                    </td>
+                    <tr
+                      key={entry.player.id}
+                      className="border-b border-zinc-700 hover:bg-zinc-800"
+                    >
 
-                    <td className="p-3 font-semibold whitespace-nowrap">
-                      {entry.player.displayName}
-                    </td>
-
-                    <td className="p-3 text-center text-lg font-bold text-yellow-400">
-                      {entry.totalPoints}
-                    </td>
-
-                    <td className="p-3 text-center whitespace-nowrap">
-                      {entry.resultPoints}
-                    </td>
-
-                    <td className="p-3 text-center whitespace-nowrap">
-                      {entry.exactPoints}
-                    </td>
-
-                    <td className="p-3 text-center whitespace-nowrap">
-                      {entry.fttsPoints}
-                    </td>
-
-                    {activeCompetition.monthlyWinnerEnabled && (
-                      <td className="p-3 text-center whitespace-nowrap">
-                        {entry.bonusPoints}
+                      <td className="whitespace-nowrap p-3 text-lg font-bold">
+                        {getMedal(entry.rank)}
                       </td>
-                    )}
 
-                  </tr>
-                ))}
+                      <td className="whitespace-nowrap p-3 font-semibold">
+                        {entry.player.displayName}
+                      </td>
+
+                      <td className="p-3 text-center text-lg font-bold text-yellow-400">
+                        {entry.totalPoints}
+                      </td>
+
+                      <td className="whitespace-nowrap p-3 text-center">
+                        {entry.resultPoints}
+                      </td>
+
+                      <td className="whitespace-nowrap p-3 text-center">
+                        {entry.exactPoints}
+                      </td>
+
+                      <td className="whitespace-nowrap p-3 text-center">
+                        {entry.fttsPoints}
+                      </td>
+
+                      {activeCompetition.monthlyWinnerEnabled && (
+                        <td className="whitespace-nowrap p-3 text-center">
+                          {entry.bonusPoints}
+                        </td>
+                      )}
+
+                    </tr>
+
+                  )
+                )}
 
               </tbody>
 
             </table>
 
           </div>
+
         )}
 
       </div>
+
     </main>
   );
 }

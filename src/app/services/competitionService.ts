@@ -43,14 +43,49 @@ const COMPETITIONS: Record<string, CompetitionInfo> = {
   },
 };
 
+const ACTIVE_COMPETITION_KEY = "csp-active-competition";
+
 class CompetitionService {
   getActiveCompetition(): CompetitionInfo {
-    // TEMPORARY QA
-    // Force Betway Premiership as the active competition
+    if (typeof window !== "undefined") {
+      const savedCompetition = localStorage.getItem(
+        ACTIVE_COMPETITION_KEY
+      );
+
+      if (
+        savedCompetition &&
+        COMPETITIONS[savedCompetition]
+      ) {
+        return COMPETITIONS[savedCompetition];
+      }
+    }
+
     return COMPETITIONS[CompetitionIds.BET];
   }
 
-  getCompetition(id: string): CompetitionInfo {
+  setActiveCompetition(
+    competitionId: string
+  ): CompetitionInfo {
+    const competition =
+      COMPETITIONS[competitionId];
+
+    if (!competition) {
+      return this.getActiveCompetition();
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        ACTIVE_COMPETITION_KEY,
+        competitionId
+      );
+    }
+
+    return competition;
+  }
+
+  getCompetition(
+    id: string
+  ): CompetitionInfo {
     return COMPETITIONS[id];
   }
 
@@ -59,6 +94,7 @@ class CompetitionService {
   }
 }
 
-const competitionService = new CompetitionService();
+const competitionService =
+  new CompetitionService();
 
 export default competitionService;

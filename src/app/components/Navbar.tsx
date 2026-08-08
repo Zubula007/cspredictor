@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useCompetition } from "../context/CompetitionContext";
+
 export default function Navbar() {
   const pathname = usePathname();
+
+  const {
+    activeCompetition,
+    competitions,
+    setActiveCompetition,
+  } = useCompetition();
 
   function linkClass(path: string) {
     const active =
@@ -30,47 +38,91 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 mb-8 rounded-2xl border border-yellow-500 bg-black/95 p-4 shadow-2xl backdrop-blur">
+    <nav className="border-b border-yellow-500/20 bg-black px-4 py-4">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4">
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
+        {/* Navigation */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
 
-        <Link
-          href="/"
-          className={linkClass("/")}
-        >
-          🏠 Home
-        </Link>
+          <Link
+            href="/"
+            className={linkClass("/")}
+          >
+            🏠 Home
+          </Link>
 
-        <Link
-          href="/fixtures"
-          className={linkClass("/fixtures")}
-        >
-          ⚽ Fixtures
-        </Link>
+          <Link
+            href="/fixtures"
+            className={linkClass("/fixtures")}
+          >
+            ⚽ Fixtures
+          </Link>
 
-        <Link
-          href="/player"
-          className={linkClass("/player")}
-        >
-          👤 Players
-        </Link>
+          <Link
+            href="/player"
+            className={linkClass("/player")}
+          >
+            👤 Players
+          </Link>
 
-        <Link
-          href="/leaderboard"
-          className={linkClass("/leaderboard")}
-        >
-          🏆 Leaderboard
-        </Link>
+          <Link
+            href="/leaderboard"
+            className={linkClass("/leaderboard")}
+          >
+            🏆 Leaderboard
+          </Link>
 
-        <Link
-          href="/admin"
-          className={linkClass("/admin")}
-        >
-          ⚙️ Admin
-        </Link>
+          <Link
+            href="/admin"
+            className={linkClass("/admin")}
+          >
+            ⚙️ Admin
+          </Link>
+
+        </div>
+
+        {/* Competition Selector */}
+        <div className="flex flex-col items-center gap-2 sm:flex-row">
+
+          <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            Competition
+          </span>
+
+          <div className="flex items-center gap-2">
+
+            <img
+              src={activeCompetition.logo}
+              alt={activeCompetition.name}
+              className="h-8 w-8 object-contain"
+            />
+
+            <select
+              value={activeCompetition.id}
+              onChange={(event) =>
+                setActiveCompetition(
+                  event.target.value
+                )
+              }
+              className="rounded-xl border border-yellow-500 bg-zinc-900 px-4 py-2 text-sm font-bold text-yellow-400 outline-none transition hover:bg-zinc-800 focus:ring-2 focus:ring-yellow-400"
+            >
+              {competitions.map(
+                (competition) => (
+                  <option
+                    key={competition.id}
+                    value={competition.id}
+                    className="bg-zinc-900 text-white"
+                  >
+                    {competition.name}
+                  </option>
+                )
+              )}
+            </select>
+
+          </div>
+
+        </div>
 
       </div>
-
     </nav>
   );
 }

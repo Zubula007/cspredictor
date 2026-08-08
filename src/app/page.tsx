@@ -6,11 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import PlayerForm from "./components/PlayerForm";
 import FixtureCard from "./components/FixtureCard";
 import ConfirmationModal from "./components/ConfirmationModal";
+import CompetitionSelector from "./components/CompetitionSelector";
 import { useFixtures } from "./context/FixtureContext";
 import badges from "./data/badges";
-import competitionService from "./services/competitionService";
 import predictionService from "./services/predictionService";
 import playerRepository from "./repositories/playerRepository";
+import { useCompetition } from "./context/CompetitionContext";
 
 import { isFixtureLocked } from "./lib/predictionLock";
 
@@ -21,8 +22,7 @@ import leaderboardService, {
 type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
 const UI_PREDICTIONS_KEY = "csp-ui-predictions";
 export default function Home() {
-const activeCompetition =
-  competitionService.getActiveCompetition();
+const { activeCompetition } = useCompetition();
 
 type Prediction = {
   homeTeam: string;
@@ -343,6 +343,26 @@ useEffect(() => {
   activeCompetition.id
 ]);
 
+useEffect(() => {
+  if (!mounted) return;
+
+  const newCompetitionPredictions: Prediction[] =
+    competitionFixtures.map((fixture) => ({
+      homeTeam: fixture.homeTeam,
+      awayTeam: fixture.awayTeam,
+      homeScore: 0,
+      awayScore: 0,
+      scoreSelected: false,
+      firstTeamToScore: null,
+    }));
+
+  setPredictions(newCompetitionPredictions);
+
+  setShowIncomplete(false);
+  setError("");
+  setSubmitted(false);
+  setSubmittedAt(null);
+}, [activeCompetition.id]);
 if (!mounted) {
   return null;
 }
@@ -431,6 +451,10 @@ return (
 
           </div>
 
+                </div>
+
+        <div className="mb-8">
+          <CompetitionSelector />
         </div>
 
         <PlayerForm
@@ -498,28 +522,26 @@ homeTeam={fixture.homeTeam}
                 }
 
                userPrediction={{
-
   homeScore:
-    predictions[index].homeScore,
+    predictions[index]?.homeScore ?? 0,
 
   awayScore:
-    predictions[index].awayScore,
+    predictions[index]?.awayScore ?? 0,
 
   scoreSelected:
-    predictions[index].scoreSelected,
+    predictions[index]?.scoreSelected ?? false,
 
   firstTeamToScore:
-    predictions[index].firstTeamToScore,
-
+    predictions[index]?.firstTeamToScore ?? null,
 }} 
 
-                incomplete={
+               incomplete={
   showIncomplete &&
   fixture.status !== "Postponed" &&
   fixture.status !== "Cancelled" &&
   (
-    !predictions[index].scoreSelected ||
-    predictions[index].firstTeamToScore === null
+    !predictions[index]?.scoreSelected ||
+    predictions[index]?.firstTeamToScore === null
   )
 } 
 onPredictionChange={
@@ -896,6 +918,8 @@ onPredictionChange={
   );
 
 }
+
+
 
 
 

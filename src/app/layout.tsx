@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import "./globals.css";
 
+import { CompetitionProvider } from "./context/CompetitionContext";
 import { FixtureProvider } from "./context/FixtureContext";
 import { LeaderboardProvider } from "./context/LeaderboardContext";
 
@@ -33,14 +34,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black`}
       >
-        <FixtureProvider>
-          <LeaderboardProvider>
-            <div className="mx-auto max-w-7xl px-6 py-6">
+        <CompetitionProvider>
+          <FixtureProvider>
+            <LeaderboardProvider>
               <Navbar />
               {children}
-            </div>
-          </LeaderboardProvider>
-        </FixtureProvider>
+            </LeaderboardProvider>
+          </FixtureProvider>
+        </CompetitionProvider>
       </body>
     </html>
   );

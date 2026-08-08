@@ -4,14 +4,6 @@ import type { Player } from "../types/player";
 const SESSION_KEY = "csp-auth-player";
 
 class AuthService {
-  /**
-   * Create a new player account.
-   *
-   * New players start as:
-   * - inactive
-   * - PENDING
-   * - not an admin
-   */
   registerPlayer(
     displayName: string,
     username: string,
@@ -21,86 +13,62 @@ class AuthService {
     player?: Player;
     error?: string;
   } {
-    const cleanDisplayName =
-      displayName.trim();
-
-    const cleanUsername =
-      username.trim().toLowerCase();
+    const cleanDisplayName = displayName.trim();
+    const cleanUsername = username.trim().toLowerCase();
 
     if (!cleanDisplayName) {
       return {
         success: false,
-        error:
-          "Please enter your display name.",
+        error: "Please enter your display name.",
       };
     }
 
     if (!cleanUsername) {
       return {
         success: false,
-        error:
-          "Please enter a username.",
+        error: "Please enter a username.",
       };
     }
 
     if (!passwordHash) {
       return {
         success: false,
-        error:
-          "Please enter a password.",
+        error: "Please enter a password.",
       };
     }
 
     const existingUsername =
-      playerRepository.getByUsername(
-        cleanUsername
-      );
+      playerRepository.getByUsername(cleanUsername);
 
     if (existingUsername) {
       return {
         success: false,
-        error:
-          "That username is already registered.",
+        error: "That username is already registered.",
       };
     }
 
     const existingDisplayName =
-      playerRepository.getByDisplayName(
-        cleanDisplayName
-      );
+      playerRepository.getByDisplayName(cleanDisplayName);
 
     if (existingDisplayName) {
       return {
         success: false,
-        error:
-          "That display name is already registered.",
+        error: "That display name is already registered.",
       };
     }
 
     const newPlayer: Player = {
       id: crypto.randomUUID(),
-
-      displayName:
-        cleanDisplayName,
-
-      username:
-        cleanUsername,
-
+      displayName: cleanDisplayName,
+      username: cleanUsername,
       passwordHash,
-
-      joinedAt:
-        new Date().toISOString(),
-
+      joinedAt: new Date().toISOString(),
       active: false,
-
       isAdmin: false,
-
       approvalStatus: "PENDING",
     };
 
-    playerRepository.addPlayer(
-      newPlayer
-    );
+    playerRepository.addPlayer(newPlayer);
 
     return {
       success: true,
@@ -108,12 +76,6 @@ class AuthService {
     };
   }
 
-  /**
-   * Login an approved player.
-   *
-   * Password verification will be connected
-   * to the authentication hashing layer.
-   */
   login(
     username: string,
     passwordHash: string
@@ -122,26 +84,19 @@ class AuthService {
     player?: Player;
     error?: string;
   } {
-    const cleanUsername =
-      username.trim().toLowerCase();
+    const cleanUsername = username.trim().toLowerCase();
 
     const player =
-      playerRepository.getByUsername(
-        cleanUsername
-      );
+      playerRepository.getByUsername(cleanUsername);
 
     if (!player) {
       return {
         success: false,
-        error:
-          "Username or password is incorrect.",
+        error: "Username or password is incorrect.",
       };
     }
 
-    if (
-      player.approvalStatus ===
-      "PENDING"
-    ) {
+    if (player.approvalStatus === "PENDING") {
       return {
         success: false,
         error:
@@ -149,10 +104,7 @@ class AuthService {
       };
     }
 
-    if (
-      player.approvalStatus ===
-      "REJECTED"
-    ) {
+    if (player.approvalStatus === "REJECTED") {
       return {
         success: false,
         error:
@@ -168,14 +120,10 @@ class AuthService {
       };
     }
 
-    if (
-      player.passwordHash !==
-      passwordHash
-    ) {
+    if (player.passwordHash !== passwordHash) {
       return {
         success: false,
-        error:
-          "Username or password is incorrect.",
+        error: "Username or password is incorrect.",
       };
     }
 
@@ -192,22 +140,13 @@ class AuthService {
     };
   }
 
-  /**
-   * Get the currently logged-in player.
-   */
-  getCurrentPlayer():
-    | Player
-    | null {
-    if (
-      typeof window === "undefined"
-    ) {
+  getCurrentPlayer(): Player | null {
+    if (typeof window === "undefined") {
       return null;
     }
 
     const saved =
-      localStorage.getItem(
-        SESSION_KEY
-      );
+      localStorage.getItem(SESSION_KEY);
 
     if (!saved) {
       return null;
@@ -216,41 +155,35 @@ class AuthService {
     try {
       return JSON.parse(saved) as Player;
     } catch {
-      localStorage.removeItem(
-        SESSION_KEY
-      );
-
+      localStorage.removeItem(SESSION_KEY);
       return null;
     }
   }
 
-  /**
-   * Check whether a player is logged in.
-   */
   isLoggedIn(): boolean {
-    return (
-      this.getCurrentPlayer() !==
-      null
-    );
+    return this.getCurrentPlayer() !== null;
   }
 
-  /**
-   * Log the current player out.
-   */
   logout(): void {
-    if (
-      typeof window === "undefined"
-    ) {
+    if (typeof window === "undefined") {
       return;
     }
 
-    localStorage.removeItem(
-      SESSION_KEY
+    localStorage.removeItem(SESSION_KEY);
+  }
+
+  switchPlayer(player: Player): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify(player)
     );
   }
 }
 
-const authService =
-  new AuthService();
+const authService = new AuthService();
 
 export default authService;

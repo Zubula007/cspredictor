@@ -1,4 +1,5 @@
 import type { CompetitionId } from "../types/fixture";
+
 import type {
   PSLImport,
   PSLImportType,
@@ -41,10 +42,18 @@ interface PSLSourceMatch {
     | "None"
     | null;
 
+  source: "PSL";
+
   importType: PSLImportType;
 }
 
 interface PSLApiResponse {
+  source: "PSL";
+
+  sourceUrl?: string;
+
+  competitionId: CompetitionId;
+
   matches: PSLSourceMatch[];
 }
 
@@ -75,12 +84,15 @@ class PSLService {
     match: PSLSourceMatch
   ): PSLImport {
     return {
-      id: this.createStableId(match),
+      id: this.createStableId(
+        match
+      ),
 
       competitionId:
         match.competitionId,
 
-      round: match.round,
+      round:
+        match.round,
 
       matchDate:
         match.matchDate,
@@ -129,19 +141,37 @@ class PSLService {
   async fetchMatches(
     competitionId: CompetitionId
   ): Promise<PSLImport[]> {
-    const response = await fetch(
-      `/api/psl?competition=${encodeURIComponent(
-        String(competitionId)
-      )}`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
+    const response =
+      await fetch(
+        `/api/psl?competition=${encodeURIComponent(
+          String(competitionId)
+        )}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
 
     if (!response.ok) {
+      let message =
+        `PSL request failed with status ${response.status}`;
+
+      try {
+        const errorData =
+          (await response.json()) as {
+            error?: string;
+          };
+
+        if (errorData.error) {
+          message =
+            errorData.error;
+        }
+      } catch {
+        // Keep the default error message.
+      }
+
       throw new Error(
-        `PSL request failed with status ${response.status}`
+        message
       );
     }
 
@@ -150,7 +180,9 @@ class PSLService {
 
     if (
       !data ||
-      !Array.isArray(data.matches)
+      !Array.isArray(
+        data.matches
+      )
     ) {
       throw new Error(
         "Invalid PSL response."
@@ -159,7 +191,9 @@ class PSLService {
 
     return data.matches.map(
       (match) =>
-        this.convertMatch(match)
+        this.convertMatch(
+          match
+        )
     );
   }
 

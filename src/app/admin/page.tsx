@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import playerRepository from "../repositories/playerRepository";
-import competitionService from "../services/competitionService";
 
 import { useFixtures } from "../context/FixtureContext";
 import { useLeaderboard } from "../context/LeaderboardContext";
+import { useCompetition } from "../context/CompetitionContext";
 
 const adminCards = [
   {
@@ -61,8 +61,11 @@ export default function AdminDashboardPage() {
 
   const { leaderboard } = useLeaderboard();
 
-  const activeCompetition =
-    competitionService.getActiveCompetition();
+  const {
+    activeCompetition,
+    competitions,
+    setActiveCompetition,
+  } = useCompetition();
 
   const pendingResults = fixtures.filter(
     (fixture) =>
@@ -82,15 +85,26 @@ export default function AdminDashboardPage() {
       fixture.competitionId === activeCompetition.id
   );
 
+  const handleCompetitionChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    setActiveCompetition(event.target.value);
+  };
+
   if (!mounted) {
     return null;
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white md:px-8">
+    <main className="min-h-screen bg-black px-4 py-8 text-white md:px-6">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold text-yellow-400 md:text-4xl">
+
+        {/* =====================================================
+            HEADER
+            ===================================================== */}
+
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-black text-yellow-400 md:text-4xl">
             ⚙️ Admin Dashboard
           </h1>
 
@@ -99,18 +113,52 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        {/* Active Competition */}
+        {/* =====================================================
+            ACTIVE COMPETITION
+            ===================================================== */}
 
-        <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-xl">
+        <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-6 shadow-xl md:p-8">
+
           <h2 className="text-center text-xl font-bold text-yellow-400 md:text-2xl">
             🏆 Active Competition
           </h2>
 
-          <p className="mt-3 text-center text-lg font-bold">
+          {/* Competition Selector */}
+
+          <div className="mx-auto mt-5 max-w-md">
+            <label
+              htmlFor="admin-competition-selector"
+              className="mb-2 block text-center text-sm font-semibold text-gray-300"
+            >
+              Select Competition
+            </label>
+
+            <select
+              id="admin-competition-selector"
+              value={activeCompetition.id}
+              onChange={handleCompetitionChange}
+              className="w-full rounded-xl border-2 border-yellow-500 bg-black px-4 py-3 text-center font-bold text-yellow-400 outline-none transition focus:border-yellow-300 focus:ring-2 focus:ring-yellow-500/30"
+            >
+              {competitions.map((competition) => (
+                <option
+                  key={competition.id}
+                  value={competition.id}
+                  className="bg-black text-white"
+                >
+                  {competition.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <p className="mt-5 text-center text-lg font-bold text-white">
             {activeCompetition.name}
           </p>
 
+          {/* Competition Rules */}
+
           <div className="mt-8 grid gap-4 md:grid-cols-3">
+
             <div
               className={`rounded-xl border p-5 text-center ${
                 activeCompetition.roundWinnerEnabled
@@ -164,12 +212,16 @@ export default function AdminDashboardPage() {
                   : "❌"}
               </p>
             </div>
+
           </div>
         </div>
 
-        {/* Dashboard Statistics */}
+        {/* =====================================================
+            DASHBOARD STATISTICS
+            ===================================================== */}
 
         <div className="mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
               👥 Active Players
@@ -221,9 +273,12 @@ export default function AdminDashboardPage() {
               {publishedResults}
             </p>
           </div>
+
         </div>
 
-        {/* Admin Navigation */}
+        {/* =====================================================
+            ADMIN NAVIGATION
+            ===================================================== */}
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {adminCards.map((card) => (
@@ -242,6 +297,7 @@ export default function AdminDashboardPage() {
             </Link>
           ))}
         </div>
+
       </div>
     </main>
   );

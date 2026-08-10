@@ -9,10 +9,13 @@ import { useFixtures } from "../context/FixtureContext";
 import { useLeaderboard } from "../context/LeaderboardContext";
 import { useCompetition } from "../context/CompetitionContext";
 
+import competitionService from "../services/competitionService";
+
 const adminCards = [
   {
     title: "📢 Publish Results",
-    description: "Publish match results and score predictions.",
+    description:
+      "Publish match results and score predictions.",
     href: "/admin/results",
   },
   {
@@ -23,27 +26,32 @@ const adminCards = [
   },
   {
     title: "📅 Manage Fixtures",
-    description: "Create, edit and manage fixtures.",
+    description:
+      "Create, edit and manage fixtures.",
     href: "/admin/fixtures",
   },
   {
     title: "👥 Players",
-    description: "Manage league participants.",
+    description:
+      "Manage league participants.",
     href: "/admin/players",
   },
   {
     title: "🏆 Leaderboard",
-    description: "View championship standings.",
+    description:
+      "View championship standings.",
     href: "/leaderboard",
   },
   {
     title: "🧪 QA Toolkit",
-    description: "Reset test data for end-to-end QA.",
+    description:
+      "Reset test data for end-to-end QA.",
     href: "/admin/qa",
   },
   {
     title: "⚙️ Settings",
-    description: "League configuration and preferences.",
+    description:
+      "League configuration and preferences.",
     href: "/admin/settings",
   },
 ];
@@ -51,15 +59,16 @@ const adminCards = [
 export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [activeRound, setActiveRound] =
+    useState(1);
 
-  const players = playerRepository.getActivePlayers();
+  const players =
+    playerRepository.getActivePlayers();
 
   const { fixtures } = useFixtures();
 
-  const { leaderboard } = useLeaderboard();
+  const { leaderboard } =
+    useLeaderboard();
 
   const {
     activeCompetition,
@@ -67,41 +76,133 @@ export default function AdminDashboardPage() {
     setActiveCompetition,
   } = useCompetition();
 
-  const pendingResults = fixtures.filter(
-    (fixture) =>
-      fixture.status === "Completed" &&
-      !fixture.published &&
-      fixture.competitionId === activeCompetition.id
-  ).length;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const publishedResults = fixtures.filter(
-    (fixture) =>
-      fixture.published &&
-      fixture.competitionId === activeCompetition.id
-  ).length;
+  /*
+   * Load the active round whenever
+   * the active competition changes.
+   */
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
 
-  const competitionFixtures = fixtures.filter(
-    (fixture) =>
-      fixture.competitionId === activeCompetition.id
-  );
+    const round =
+      competitionService.getActiveRound(
+        activeCompetition.id
+      );
+
+    setActiveRound(round);
+  }, [
+    activeCompetition.id,
+    mounted,
+  ]);
+
+  /*
+   * Fixtures belonging to the
+   * selected competition.
+   */
+  const competitionFixtures =
+    fixtures.filter(
+      (fixture) =>
+        fixture.competitionId ===
+        activeCompetition.id
+    );
+
+  /*
+   * Find available rounds for the
+   * selected competition.
+   */
+  const availableRounds =
+    Array.from(
+      new Set(
+        competitionFixtures
+          .map(
+            (fixture) =>
+              fixture.round
+          )
+          .filter(
+            (round): round is number =>
+              typeof round === "number"
+          )
+      )
+    ).sort(
+      (a, b) => a - b
+    );
+
+  /*
+   * Default to Round 1 if no
+   * fixtures have been imported.
+   */
+  const rounds =
+    availableRounds.length > 0
+      ? availableRounds
+      : [1];
+
+  const pendingResults =
+    fixtures.filter(
+      (fixture) =>
+        fixture.status ===
+          "Completed" &&
+        !fixture.published &&
+        fixture.competitionId ===
+          activeCompetition.id
+    ).length;
+
+  const publishedResults =
+    fixtures.filter(
+      (fixture) =>
+        fixture.published &&
+        fixture.competitionId ===
+          activeCompetition.id
+    ).length;
 
   const handleCompetitionChange = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
-    setActiveCompetition(event.target.value);
+    setActiveCompetition(
+      event.target.value
+    );
+  };
+
+  const handleRoundChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const round = Number(
+      event.target.value
+    );
+
+    /*
+     * IMPORTANT:
+     * Competition ID first.
+     * Round second.
+     */
+    const savedRound =
+      competitionService.setActiveRound(
+        activeCompetition.id,
+        round
+      );
+
+    setActiveRound(savedRound);
   };
 
   if (!mounted) {
     return null;
   }
 
-  return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white md:px-6">
-      <div className="mx-auto max-w-7xl">
+  const activeRoundFixtures =
+    competitionFixtures.filter(
+      (fixture) =>
+        fixture.round === activeRound
+    );
 
-        {/* =====================================================
-            HEADER
-            ===================================================== */}
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+
+        {/* HEADER */}
 
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-black text-yellow-400 md:text-4xl">
@@ -113,9 +214,7 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        {/* =====================================================
-            ACTIVE COMPETITION
-            ===================================================== */}
+        {/* ACTIVE COMPETITION */}
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-6 shadow-xl md:p-8">
 
@@ -136,18 +235,22 @@ export default function AdminDashboardPage() {
             <select
               id="admin-competition-selector"
               value={activeCompetition.id}
-              onChange={handleCompetitionChange}
+              onChange={
+                handleCompetitionChange
+              }
               className="w-full rounded-xl border-2 border-yellow-500 bg-black px-4 py-3 text-center font-bold text-yellow-400 outline-none transition focus:border-yellow-300 focus:ring-2 focus:ring-yellow-500/30"
             >
-              {competitions.map((competition) => (
-                <option
-                  key={competition.id}
-                  value={competition.id}
-                  className="bg-black text-white"
-                >
-                  {competition.name}
-                </option>
-              ))}
+              {competitions.map(
+                (competition) => (
+                  <option
+                    key={competition.id}
+                    value={competition.id}
+                    className="bg-black text-white"
+                  >
+                    {competition.name}
+                  </option>
+                )
+              )}
             </select>
           </div>
 
@@ -155,7 +258,64 @@ export default function AdminDashboardPage() {
             {activeCompetition.name}
           </p>
 
-          {/* Competition Rules */}
+          {/* ACTIVE ROUND */}
+
+          <div className="mx-auto mt-8 max-w-md">
+            <label
+              htmlFor="admin-round-selector"
+              className="mb-2 block text-center text-sm font-semibold text-gray-300"
+            >
+              Select Active Round
+            </label>
+
+            <select
+              id="admin-round-selector"
+              value={activeRound}
+              onChange={handleRoundChange}
+              className="w-full rounded-xl border-2 border-yellow-500 bg-black px-4 py-3 text-center text-lg font-bold text-yellow-400 outline-none transition focus:border-yellow-300 focus:ring-2 focus:ring-yellow-500/30"
+            >
+              {rounds.map(
+                (round) => (
+                  <option
+                    key={round}
+                    value={round}
+                    className="bg-black text-white"
+                  >
+                    Round {round}
+                  </option>
+                )
+              )}
+            </select>
+
+            <p className="mt-3 text-center text-sm text-gray-400">
+              The home page will display only
+              this round.
+            </p>
+          </div>
+
+          {/* ACTIVE ROUND SUMMARY */}
+
+          <div className="mt-6 rounded-xl border border-green-600 bg-green-900/20 p-4 text-center">
+
+            <p className="text-sm text-gray-400">
+              Current Active Round
+            </p>
+
+            <p className="mt-1 text-2xl font-black text-green-400">
+              Round {activeRound}
+            </p>
+
+            <p className="mt-1 text-sm text-gray-300">
+              {activeRoundFixtures.length} fixture
+              {activeRoundFixtures.length === 1
+                ? ""
+                : "s"}{" "}
+              displayed on the home page
+            </p>
+
+          </div>
+
+          {/* COMPETITION RULES */}
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
 
@@ -216,9 +376,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* =====================================================
-            DASHBOARD STATISTICS
-            ===================================================== */}
+        {/* DASHBOARD STATISTICS */}
 
         <div className="mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
 
@@ -249,7 +407,8 @@ export default function AdminDashboardPage() {
 
             <p className="mt-2 text-lg font-bold text-yellow-400">
               {leaderboard.length > 0
-                ? leaderboard[0].player.displayName
+                ? leaderboard[0]
+                    .player.displayName
                 : "-"}
             </p>
           </div>
@@ -276,26 +435,28 @@ export default function AdminDashboardPage() {
 
         </div>
 
-        {/* =====================================================
-            ADMIN NAVIGATION
-            ===================================================== */}
+        {/* ADMIN NAVIGATION */}
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {adminCards.map((card) => (
-            <Link
-              key={card.title}
-              href={card.href}
-              className="rounded-2xl border border-yellow-500 bg-gradient-to-br from-zinc-900 to-black p-6 shadow-lg transition hover:scale-105 hover:border-yellow-400"
-            >
-              <h2 className="text-lg font-bold text-yellow-400">
-                {card.title}
-              </h2>
 
-              <p className="mt-2 text-sm text-gray-300">
-                {card.description}
-              </p>
-            </Link>
-          ))}
+          {adminCards.map(
+            (card) => (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="rounded-2xl border border-yellow-500 bg-gradient-to-br from-zinc-900 to-black p-6 shadow-lg transition hover:scale-105 hover:border-yellow-400"
+              >
+                <h2 className="text-lg font-bold text-yellow-400">
+                  {card.title}
+                </h2>
+
+                <p className="mt-2 text-sm text-gray-300">
+                  {card.description}
+                </p>
+              </Link>
+            )
+          )}
+
         </div>
 
       </div>

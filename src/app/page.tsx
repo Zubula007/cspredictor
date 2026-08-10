@@ -11,34 +11,45 @@ import { useFixtures } from "./context/FixtureContext";
 import { useCompetition } from "./context/CompetitionContext";
 
 import badges from "./data/badges";
-
 import predictionService from "./services/predictionService";
-import authService from "./services/authService";
-
-import { isFixtureLocked } from "./lib/predictionLock";
-
 import leaderboardService, {
   type LeaderboardEntry,
 } from "./services/leaderboardService";
 
-type FTTSOption = "HOME" | "AWAY" | "NONE" | null;
+import competitionService from "./services/competitionService";
 
-const UI_PREDICTIONS_KEY = "csp-ui-predictions";
+import authService from "./services/authService";
+import { isFixtureLocked } from "./lib/predictionLock";
+
+type FTTSOption =
+  | "HOME"
+  | "AWAY"
+  | "NONE"
+  | null;
+
+type Prediction = {
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  scoreSelected: boolean;
+  firstTeamToScore: FTTSOption;
+};
+
+const UI_PREDICTIONS_KEY =
+  "csp-ui-predictions";
 
 export default function Home() {
-  const { activeCompetition } = useCompetition();
+  const { activeCompetition } =
+    useCompetition();
 
-  type Prediction = {
-    homeTeam: string;
-    awayTeam: string;
-    homeScore: number;
-    awayScore: number;
-    scoreSelected: boolean;
-    firstTeamToScore: FTTSOption;
-  };
+  const { fixtures } = useFixtures();
 
-  const [playerName, setPlayerName] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [playerName, setPlayerName] =
+    useState("");
+
+  const [submitted, setSubmitted] =
+    useState(false);
 
   const [submittedAt, setSubmittedAt] =
     useState<string | null>(null);
@@ -46,40 +57,118 @@ export default function Home() {
   const [showConfirmation, setShowConfirmation] =
     useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
+
   const [showIncomplete, setShowIncomplete] =
     useState(false);
 
   const [leaderboard, setLeaderboard] =
     useState<LeaderboardEntry[]>([]);
 
-  const [qaMode, setQaMode] = useState(false);
-  const [ignoreLock, setIgnoreLock] = useState(false);
+  const [qaMode, setQaMode] =
+    useState(false);
 
-  const fixtureRefs = useRef<
-    (HTMLDivElement | null)[]
-  >([]);
+  const [ignoreLock, setIgnoreLock] =
+    useState(false);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] =
+    useState(false);
 
-  const { fixtures } = useFixtures();
+  const [activeRound, setActiveRound] =
+    useState(1);
 
-  const competitionFixtures = fixtures.filter(
-    (fixture) =>
-      fixture.competitionId === activeCompetition.id
-  );
+  const fixtureRefs =
+    useRef<(HTMLDivElement | null)[]>(
+      []
+    );
+
+  /*
+   * ============================================================
+   * ACTIVE ROUND
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    const round =
+      competitionService.getActiveRound(
+        activeCompetition.id
+      );
+
+    setActiveRound(round);
+  }, [
+    activeCompetition.id,
+    mounted,
+  ]);
+
+  /*
+   * ============================================================
+   * CURRENT ROUND FIXTURES
+   * ============================================================
+   *
+   * IMPORTANT:
+   *
+   * We filter by:
+   *
+   * 1. Active competition
+   * 2. Admin-selected active round
+   *
+   * Therefore the home page will NEVER display
+   * all imported fixtures.
+   */
+
+  const competitionFixtures =
+    fixtures.filter(
+      (fixture) =>
+        fixture.competitionId ===
+          activeCompetition.id &&
+        fixture.round === activeRound
+    );
 
   const [predictions, setPredictions] =
-    useState<Prediction[]>(
-      competitionFixtures.map((fixture) => ({
-        homeTeam: fixture.homeTeam,
-        awayTeam: fixture.awayTeam,
-        homeScore: 0,
-        awayScore: 0,
-        scoreSelected: false,
-        firstTeamToScore: null,
-      }))
+    useState<Prediction[]>([]);
+
+  /*
+   * Keep predictions aligned with
+   * the active competition AND active round.
+   */
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    const newPredictions: Prediction[] =
+      competitionFixtures.map(
+        (fixture) => ({
+          homeTeam:
+            fixture.homeTeam,
+
+          awayTeam:
+            fixture.awayTeam,
+
+          homeScore: 0,
+
+          awayScore: 0,
+
+          scoreSelected: false,
+
+          firstTeamToScore: null,
+        })
+      );
+
+    setPredictions(
+      newPredictions
     );
+  }, [
+    activeCompetition.id,
+    activeRound,
+    mounted,
+  ]);
 
   const updatePrediction = (
     index: number,
@@ -88,35 +177,27 @@ export default function Home() {
     scoreSelected: boolean,
     firstTeamToScore: FTTSOption
   ) => {
-    setPredictions((current) =>
-      current.map((prediction, i) =>
-        i === index
-          ? {
-              ...prediction,
-              homeScore,
-              awayScore,
-              scoreSelected,
-              firstTeamToScore,
-            }
-          : prediction
-      )
+    setPredictions(
+      (current) =>
+        current.map(
+          (prediction, i) =>
+            i === index
+              ? {
+                  ...prediction,
+                  homeScore,
+                  awayScore,
+                  scoreSelected,
+                  firstTeamToScore,
+                }
+              : prediction
+        )
     );
   };
 
   /*
-   * =========================================================
-   * SUBMIT PREDICTIONS
-   * =========================================================
-   *
-   * Players do NOT need to predict every fixture.
-   *
-   * Only fixtures where:
-   *
-   *   scoreSelected === true
-   *   AND
-   *   firstTeamToScore !== null
-   *
-   * will be submitted.
+   * ============================================================
+   * SUBMISSION VALIDATION
+   * ============================================================
    */
 
   const handleSubmit = () => {
@@ -128,31 +209,51 @@ export default function Home() {
       return;
     }
 
-    const predictionsToSubmit =
-      predictions.filter((prediction, index) => {
-        const fixture =
-          competitionFixtures[index];
+    const incompletePrediction =
+      predictions.some(
+        (prediction, index) => {
+          const fixture =
+            competitionFixtures[index];
 
-        if (!fixture) {
-          return false;
+          if (!fixture) {
+            return false;
+          }
+
+          if (
+            fixture.status ===
+              "Postponed" ||
+            fixture.status ===
+              "Cancelled"
+          ) {
+            return false;
+          }
+
+          return (
+            !prediction.scoreSelected ||
+            prediction.firstTeamToScore ===
+              null
+          );
         }
+      );
 
-        if (
-          fixture.status === "Postponed" ||
-          fixture.status === "Cancelled"
-        ) {
-          return false;
-        }
+    const currentQaMode =
+      localStorage.getItem(
+        "csp-qa-mode"
+      ) === "true";
 
-        return (
-          prediction.scoreSelected &&
-          prediction.firstTeamToScore !== null
-        );
-      });
+    const ignoreValidation =
+      localStorage.getItem(
+        "csp-ignore-validation"
+      ) === "true";
 
-    if (predictionsToSubmit.length === 0) {
+    if (
+      incompletePrediction &&
+      !(currentQaMode && ignoreValidation)
+    ) {
+      setShowIncomplete(true);
+
       setError(
-        "Please make at least one prediction before submitting."
+        "Please complete all scheduled fixtures before submitting your predictions."
       );
 
       return;
@@ -164,9 +265,9 @@ export default function Home() {
   };
 
   /*
-   * =========================================================
+   * ============================================================
    * CONFIRM SUBMISSION
-   * =========================================================
+   * ============================================================
    */
 
   const confirmSubmission = () => {
@@ -183,63 +284,59 @@ export default function Home() {
       return;
     }
 
-    predictions.forEach((prediction, index) => {
-      const fixture =
-        competitionFixtures[index];
+    predictions.forEach(
+      (prediction, index) => {
+        const fixture =
+          competitionFixtures[index];
 
-      if (!fixture) {
-        return;
+        if (!fixture) {
+          return;
+        }
+
+        if (
+          !prediction.scoreSelected
+        ) {
+          return;
+        }
+
+        if (
+          fixture.status ===
+            "Postponed" ||
+          fixture.status ===
+            "Cancelled"
+        ) {
+          return;
+        }
+
+        predictionService.savePlayerPrediction(
+          player.id,
+          fixture.id,
+          prediction.homeScore,
+          prediction.awayScore,
+          prediction.firstTeamToScore ===
+            "HOME"
+            ? "Home"
+            : prediction.firstTeamToScore ===
+              "AWAY"
+            ? "Away"
+            : "None"
+        );
       }
-
-      /*
-       * Never submit postponed or cancelled fixtures.
-       */
-
-      if (
-        fixture.status === "Postponed" ||
-        fixture.status === "Cancelled"
-      ) {
-        return;
-      }
-
-      /*
-       * IMPORTANT:
-       *
-       * Ignore fixtures that the player has not
-       * actually predicted.
-       */
-
-      if (
-        !prediction.scoreSelected ||
-        prediction.firstTeamToScore === null
-      ) {
-        return;
-      }
-
-      predictionService.savePlayerPrediction(
-        player.id,
-        fixture.id,
-        prediction.homeScore,
-        prediction.awayScore,
-        prediction.firstTeamToScore === "HOME"
-          ? "Home"
-          : prediction.firstTeamToScore ===
-            "AWAY"
-          ? "Away"
-          : "None"
-      );
-    });
+    );
 
     const now = new Date();
 
     const formatted =
-      now.toLocaleString("en-ZA", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      now.toLocaleString(
+        "en-ZA",
+        {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }
+      );
 
     setSubmitted(true);
     setSubmittedAt(formatted);
@@ -258,16 +355,18 @@ export default function Home() {
   };
 
   /*
-   * =========================================================
-   * PREDICTION COUNTERS
-   * =========================================================
+   * ============================================================
+   * FIXTURE COUNTS
+   * ============================================================
    */
 
   const availableFixtures =
     competitionFixtures.filter(
       (fixture) =>
-        fixture.status !== "Postponed" &&
-        fixture.status !== "Cancelled"
+        fixture.status !==
+          "Postponed" &&
+        fixture.status !==
+          "Cancelled"
     ).length;
 
   const completedPredictions =
@@ -281,28 +380,33 @@ export default function Home() {
         }
 
         if (
-          fixture.status === "Postponed" ||
-          fixture.status === "Cancelled"
+          fixture.status ===
+            "Postponed" ||
+          fixture.status ===
+            "Cancelled"
         ) {
           return false;
         }
 
         return (
           prediction.scoreSelected &&
-          prediction.firstTeamToScore !== null
+          prediction.firstTeamToScore !==
+            null
         );
       }
     ).length;
 
   /*
-   * =========================================================
-   * LOAD SAVED LOCAL DATA
-   * =========================================================
+   * ============================================================
+   * INITIAL LOAD
+   * ============================================================
    */
 
   useEffect(() => {
     const savedPlayer =
-      localStorage.getItem("csp-player");
+      localStorage.getItem(
+        "csp-player"
+      );
 
     const savedPredictions =
       localStorage.getItem(
@@ -310,7 +414,9 @@ export default function Home() {
       );
 
     const savedSubmitted =
-      localStorage.getItem("csp-submitted");
+      localStorage.getItem(
+        "csp-submitted"
+      );
 
     const savedSubmittedAt =
       localStorage.getItem(
@@ -330,13 +436,17 @@ export default function Home() {
     );
 
     if (savedPlayer) {
-      setPlayerName(savedPlayer);
+      setPlayerName(
+        savedPlayer
+      );
     }
 
     if (savedPredictions) {
       try {
         setPredictions(
-          JSON.parse(savedPredictions)
+          JSON.parse(
+            savedPredictions
+          )
         );
       } catch {
         console.error(
@@ -345,21 +455,26 @@ export default function Home() {
       }
     }
 
-    if (savedSubmitted === "true") {
+    if (
+      savedSubmitted ===
+      "true"
+    ) {
       setSubmitted(true);
     }
 
     if (savedSubmittedAt) {
-      setSubmittedAt(savedSubmittedAt);
+      setSubmittedAt(
+        savedSubmittedAt
+      );
     }
 
     setMounted(true);
   }, []);
 
   /*
-   * =========================================================
-   * SAVE LOCAL UI STATE
-   * =========================================================
+   * ============================================================
+   * LOCAL STORAGE
+   * ============================================================
    */
 
   useEffect(() => {
@@ -374,7 +489,9 @@ export default function Home() {
 
     localStorage.setItem(
       UI_PREDICTIONS_KEY,
-      JSON.stringify(predictions)
+      JSON.stringify(
+        predictions
+      )
     );
   }, [
     playerName,
@@ -383,9 +500,9 @@ export default function Home() {
   ]);
 
   /*
-   * =========================================================
+   * ============================================================
    * LEADERBOARD
-   * =========================================================
+   * ============================================================
    */
 
   useEffect(() => {
@@ -398,23 +515,13 @@ export default function Home() {
     playerName,
     predictions,
     activeCompetition.id,
-  ]);
-
-  useEffect(() => {
-    setLeaderboard(
-      leaderboardService.getLeaderboard(
-        activeCompetition.id
-      )
-    );
-  }, [
     submitted,
-    activeCompetition.id,
   ]);
 
   /*
-   * =========================================================
-   * COMPETITION CHANGE
-   * =========================================================
+   * ============================================================
+   * RESET UI WHEN SWITCHING COMPETITION
+   * ============================================================
    */
 
   useEffect(() => {
@@ -422,39 +529,25 @@ export default function Home() {
       return;
     }
 
-    const newCompetitionPredictions: Prediction[] =
-      competitionFixtures.map(
-        (fixture) => ({
-          homeTeam: fixture.homeTeam,
-          awayTeam: fixture.awayTeam,
-          homeScore: 0,
-          awayScore: 0,
-          scoreSelected: false,
-          firstTeamToScore: null,
-        })
-      );
-
-    setPredictions(
-      newCompetitionPredictions
-    );
-
     setShowIncomplete(false);
     setError("");
     setSubmitted(false);
     setSubmittedAt(null);
-  }, [activeCompetition.id]);
+  }, [
+    activeCompetition.id,
+    activeRound,
+    mounted,
+  ]);
 
   if (!mounted) {
     return null;
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white md:px-6">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-black px-4 py-8 text-white">
+      <div className="mx-auto max-w-7xl">
 
-        {/* ===================================================
-            HEADER
-            =================================================== */}
+        {/* HEADER */}
 
         <div className="mb-10 rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-8 shadow-2xl">
 
@@ -483,27 +576,43 @@ export default function Home() {
             </div>
 
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
-              <p className="text-xs uppercase text-gray-400">
-                Competition
-              </p>
 
-              <p className="mt-2 truncate font-bold text-yellow-400">
-                {activeCompetition.name}
-              </p>
+              <div className="flex items-center justify-center">
+
+                <img
+                  src={
+                    activeCompetition.logo
+                  }
+                  alt={
+                    activeCompetition.name
+                  }
+                  className="h-10 w-10 object-contain"
+                />
+
+                <p className="ml-3 hidden font-bold md:block">
+                  {
+                    activeCompetition.name
+                  }
+                </p>
+
+              </div>
+
             </div>
 
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
+
               <p className="text-xs uppercase text-gray-400">
                 Round
               </p>
 
-              <p className="mt-2 font-bold">
-                {competitionFixtures[0]?.round ??
-                  "Current Round"}
+              <p className="mt-2 font-bold text-yellow-400">
+                Round {activeRound}
               </p>
+
             </div>
 
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
+
               <p className="text-xs uppercase text-gray-400">
                 Predictions
               </p>
@@ -512,190 +621,262 @@ export default function Home() {
                 {completedPredictions}/
                 {availableFixtures}
               </p>
+
             </div>
 
           </div>
         </div>
 
-        {/* ===================================================
-            COMPETITION SELECTOR
-            =================================================== */}
+        {/* COMPETITION SELECTOR */}
 
         <div className="mb-8">
           <CompetitionSelector />
         </div>
 
-        {/* ===================================================
-            PLAYER
-            =================================================== */}
+        {/* PLAYER FORM */}
 
         <PlayerForm
           playerName={playerName}
-          setPlayerName={setPlayerName}
+          setPlayerName={
+            setPlayerName
+          }
         />
 
-        {/* ===================================================
-            FIXTURES
-            =================================================== */}
+        {/* CURRENT ROUND */}
 
-        <div className="mt-8 space-y-6">
+        <div className="mt-8">
 
-          {competitionFixtures.map(
-            (fixture, index) => {
-              const locked =
-                fixture.status === "Completed"
-                  ? true
-                  : qaMode && ignoreLock
-                  ? false
-                  : isFixtureLocked(
-                      fixture.matchDate,
-                      fixture.kickOff
-                    );
+          <div className="mb-6 text-center">
 
-              return (
-                <div
-                  key={fixture.id}
-                  ref={(element) => {
-                    fixtureRefs.current[index] =
-                      element;
-                  }}
-                >
-                  <FixtureCard
-                    competition={
-                      activeCompetition.name
-                    }
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-yellow-400">
+              Current Round
+            </p>
 
-                    competitionLogo={
-                      activeCompetition.logo
-                    }
+            <h2 className="mt-2 text-3xl font-black text-white">
+              Round {activeRound}
+            </h2>
 
-                    matchDate={
-                      fixture.matchDate
-                    }
+            <p className="mt-2 text-sm text-gray-400">
+              {competitionFixtures.length} fixture
+              {competitionFixtures.length ===
+              1
+                ? ""
+                : "s"} available
+            </p>
 
-                    displayDate={
-                      fixture.displayDate
-                    }
+          </div>
 
-                    kickOff={
-                      fixture.kickOff
-                    }
+          {/* FIXTURES */}
 
-                    status={
-                      fixture.status
-                    }
+          <div className="space-y-6">
 
-                    result={{
-                      homeScore:
-                        fixture.homeScore ?? 0,
-                      awayScore:
-                        fixture.awayScore ?? 0,
-                      firstTeamToScore:
-                        fixture.firstTeamToScore ??
-                        "None",
-                    }}
+            {competitionFixtures.length ===
+            0 ? (
+              <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
 
-                    locked={locked}
+                <p className="text-lg font-bold text-yellow-400">
+                  No fixtures available
+                </p>
 
-                    homeTeam={
-                      fixture.homeTeam
-                    }
+                <p className="mt-2 text-sm text-gray-400">
+                  There are currently no fixtures
+                  configured for Round{" "}
+                  {activeRound}.
+                </p>
 
-                    awayTeam={
-                      fixture.awayTeam
-                    }
+              </div>
+            ) : (
+              competitionFixtures.map(
+                (
+                  fixture,
+                  index
+                ) => {
 
-                    homeLogo={
-                      badges[
-                        fixture.homeTeam
-                      ]
-                    }
+                  const locked =
+                    fixture.status ===
+                      "Completed"
+                      ? true
+                      : qaMode &&
+                        ignoreLock
+                      ? false
+                      : isFixtureLocked(
+                          fixture.matchDate,
+                          fixture.kickOff
+                        );
 
-                    awayLogo={
-                      badges[
-                        fixture.awayTeam
-                      ]
-                    }
+                  return (
+                    <div
+                      key={
+                        fixture.id
+                      }
+                      ref={(
+                        element
+                      ) => {
+                        fixtureRefs.current[
+                          index
+                        ] =
+                          element;
+                      }}
+                    >
 
-                    userPrediction={{
-                      homeScore:
-                        predictions[index]
-                          ?.homeScore ?? 0,
+                      <FixtureCard
+                        competition={
+                          activeCompetition.name
+                        }
 
-                      awayScore:
-                        predictions[index]
-                          ?.awayScore ?? 0,
+                        competitionLogo={
+                          activeCompetition.logo
+                        }
 
-                      scoreSelected:
-                        predictions[index]
-                          ?.scoreSelected ??
-                        false,
+                        matchDate={
+                          fixture.matchDate
+                        }
 
-                      firstTeamToScore:
-                        predictions[index]
-                          ?.firstTeamToScore ??
-                        null,
-                    }}
+                        displayDate={
+                          fixture.displayDate
+                        }
 
-                    incomplete={
-                      showIncomplete &&
-                      fixture.status !==
-                        "Postponed" &&
-                      fixture.status !==
-                        "Cancelled" &&
-                      (
-                        !predictions[index]
-                          ?.scoreSelected ||
-                        predictions[index]
-                          ?.firstTeamToScore ===
-                          null
-                      )
-                    }
+                        kickOff={
+                          fixture.kickOff
+                        }
 
-                    onPredictionChange={(
-                      homeScore,
-                      awayScore,
-                      scoreSelected,
-                      firstTeamToScore
-                    ) =>
-                      updatePrediction(
-                        index,
-                        homeScore,
-                        awayScore,
-                        scoreSelected,
-                        firstTeamToScore
-                      )
-                    }
-                  />
-                </div>
-              );
-            }
-          )}
+                        status={
+                          fixture.status
+                        }
 
+                        result={{
+                          homeScore:
+                            fixture.homeScore ??
+                            0,
+
+                          awayScore:
+                            fixture.awayScore ??
+                            0,
+
+                          firstTeamToScore:
+                            fixture.firstTeamToScore ??
+                            "None",
+                        }}
+
+                        locked={
+                          locked
+                        }
+
+                        homeTeam={
+                          fixture.homeTeam
+                        }
+
+                        awayTeam={
+                          fixture.awayTeam
+                        }
+
+                        homeLogo={
+                          badges[
+                            fixture.homeTeam
+                          ]
+                        }
+
+                        awayLogo={
+                          badges[
+                            fixture.awayTeam
+                          ]
+                        }
+
+                        userPrediction={{
+                          homeScore:
+                            predictions[
+                              index
+                            ]?.homeScore ??
+                            0,
+
+                          awayScore:
+                            predictions[
+                              index
+                            ]?.awayScore ??
+                            0,
+
+                          scoreSelected:
+                            predictions[
+                              index
+                            ]?.scoreSelected ??
+                            false,
+
+                          firstTeamToScore:
+                            predictions[
+                              index
+                            ]?.firstTeamToScore ??
+                            null,
+                        }}
+
+                        incomplete={
+                          showIncomplete &&
+                          fixture.status !==
+                            "Postponed" &&
+                          fixture.status !==
+                            "Cancelled" &&
+                          (
+                            !predictions[
+                              index
+                            ]
+                              ?.scoreSelected ||
+                            predictions[
+                              index
+                            ]
+                              ?.firstTeamToScore ===
+                              null
+                          )
+                        }
+
+                        onPredictionChange={(
+                          homeScore,
+                          awayScore,
+                          scoreSelected,
+                          firstTeamToScore
+                        ) =>
+                          updatePrediction(
+                            index,
+                            homeScore,
+                            awayScore,
+                            scoreSelected,
+                            firstTeamToScore
+                          )
+                        }
+                      />
+
+                    </div>
+                  );
+                }
+              )
+            )}
+
+          </div>
         </div>
 
-        {/* ===================================================
-            SUBMIT
-            =================================================== */}
+        {/* SUBMIT */}
 
-        <button
-          onClick={handleSubmit}
-          className="mt-8 w-full rounded-xl bg-yellow-400 py-4 text-lg font-bold text-black transition hover:bg-yellow-300"
-        >
-          Submit All Predictions
-        </button>
+        {competitionFixtures.length >
+          0 && (
+          <button
+            onClick={
+              handleSubmit
+            }
+            className="mt-8 w-full rounded-xl bg-yellow-400 py-4 text-lg font-bold text-black transition hover:bg-yellow-300"
+          >
+            Submit All Predictions
+          </button>
+        )}
 
         {error && (
           <div className="mt-4 rounded-xl border border-red-500 bg-red-900 p-3 text-center">
+
             <p className="font-semibold text-red-200">
               {error}
             </p>
+
           </div>
         )}
 
-        {/* ===================================================
-            SUBMITTED MESSAGE
-            =================================================== */}
+        {/* SUBMITTED */}
 
         {submitted && (
           <div className="mt-8 rounded-2xl border border-green-500 bg-green-950/20 p-6">
@@ -715,39 +896,43 @@ export default function Home() {
             <p className="mt-4 text-center text-sm text-gray-300 md:text-base">
               Your{" "}
               <span className="font-semibold text-yellow-400">
-                Current Round
+                Round {activeRound}
               </span>{" "}
-              predictions have been successfully
-              recorded.
+              predictions have been successfully recorded.
             </p>
 
             {submittedAt && (
               <div className="mt-6 rounded-xl bg-black p-4 text-center">
+
                 <p className="text-sm uppercase tracking-wide text-gray-400">
                   Submitted
                 </p>
 
                 <p className="mt-1 text-sm font-bold text-yellow-400 md:text-base">
-                  📅 {submittedAt}
+                  📅{" "}
+                  {submittedAt}
                 </p>
+
               </div>
             )}
 
           </div>
         )}
 
-        {/* ===================================================
-            ROUND LEADER
-            =================================================== */}
+        {/* ROUND LEADER */}
 
         {activeCompetition.roundWinnerEnabled &&
           leaderboard.length > 0 && (
-            <div className="mt-10 rounded-3xl border border-yellow-500 bg-zinc-900 p-6">
+            <div className="mt-12">
 
               <div className="text-center">
 
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
-                  🏆 {activeCompetition.name} Leader
+                  🏆{" "}
+                  {
+                    activeCompetition.name
+                  }{" "}
+                  Leader
                 </p>
 
                 <h2 className="mt-4 text-5xl">
@@ -756,13 +941,18 @@ export default function Home() {
 
                 <h3 className="mt-3 text-3xl font-extrabold text-yellow-400 md:text-4xl">
                   {
-                    leaderboard[0].player
+                    leaderboard[0]
+                      .player
                       .displayName
                   }
                 </h3>
 
                 <p className="mt-2 text-xl text-white">
-                  {leaderboard[0].totalPoints} Points
+                  {
+                    leaderboard[0]
+                      .totalPoints
+                  }{" "}
+                  Points
                 </p>
 
               </div>
@@ -781,7 +971,10 @@ export default function Home() {
                   </p>
 
                   <p className="mt-2 text-2xl font-bold text-green-400 md:text-3xl">
-                    {leaderboard[0].resultPoints}
+                    {
+                      leaderboard[0]
+                        .resultPoints
+                    }
                   </p>
                 </div>
 
@@ -791,7 +984,10 @@ export default function Home() {
                   </p>
 
                   <p className="mt-2 text-3xl font-bold text-yellow-400">
-                    {leaderboard[0].exactPoints}
+                    {
+                      leaderboard[0]
+                        .exactPoints
+                    }
                   </p>
                 </div>
 
@@ -801,7 +997,10 @@ export default function Home() {
                   </p>
 
                   <p className="mt-2 text-3xl font-bold text-blue-400">
-                    {leaderboard[0].fttsPoints}
+                    {
+                      leaderboard[0]
+                        .fttsPoints
+                    }
                   </p>
                 </div>
 
@@ -812,26 +1011,32 @@ export default function Home() {
                     </p>
 
                     <p className="mt-2 text-3xl font-bold text-purple-400">
-                      {leaderboard[0].bonusPoints}
+                      {
+                        leaderboard[0]
+                          .bonusPoints
+                      }
                     </p>
                   </div>
                 )}
 
               </div>
+
             </div>
           )}
 
-        {/* ===================================================
-            TOP 3 LEADERBOARD
-            =================================================== */}
+        {/* TOP 3 LEADERBOARD */}
 
-        <div className="mt-10 rounded-3xl border border-yellow-500 bg-zinc-900 p-6">
+        <div className="mt-12">
 
           <div className="mb-6 flex items-center justify-center gap-3">
 
             <img
-              src={activeCompetition.logo}
-              alt={activeCompetition.name}
+              src={
+                activeCompetition.logo
+              }
+              alt={
+                activeCompetition.name
+              }
               className="h-12 w-12 object-contain"
             />
 
@@ -841,14 +1046,17 @@ export default function Home() {
 
           </div>
 
-          {leaderboard.length === 0 ? (
+          {leaderboard.length ===
+          0 ? (
             <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
+
               <p className="text-gray-400">
                 No scores available yet.
               </p>
+
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-yellow-500">
 
               <table className="min-w-full border-collapse">
 
@@ -892,51 +1100,72 @@ export default function Home() {
 
                   {leaderboard
                     .slice(0, 3)
-                    .map((entry) => (
-                      <tr
-                        key={entry.player.id}
-                        className="border-b border-zinc-700 hover:bg-zinc-800"
-                      >
-
-                        <td className="whitespace-nowrap p-3 font-bold">
-                          {entry.rank === 1
-                            ? "🥇"
-                            : entry.rank === 2
-                            ? "🥈"
-                            : "🥉"}
-                        </td>
-
-                        <td className="whitespace-nowrap p-3 font-semibold">
-                          {
-                            entry.player
-                              .displayName
+                    .map(
+                      (
+                        entry
+                      ) => (
+                        <tr
+                          key={
+                            entry
+                              .player
+                              .id
                           }
-                        </td>
+                          className="border-b border-zinc-700 hover:bg-zinc-800"
+                        >
 
-                        <td className="p-3 text-center text-lg font-bold text-yellow-400">
-                          {entry.totalPoints}
-                        </td>
-
-                        <td className="p-3 text-center">
-                          {entry.resultPoints}
-                        </td>
-
-                        <td className="p-3 text-center">
-                          {entry.exactPoints}
-                        </td>
-
-                        <td className="p-3 text-center">
-                          {entry.fttsPoints}
-                        </td>
-
-                        {activeCompetition.monthlyWinnerEnabled && (
-                          <td className="p-3 text-center">
-                            {entry.bonusPoints}
+                          <td className="whitespace-nowrap p-3 font-bold">
+                            {entry.rank ===
+                            1
+                              ? "🥇"
+                              : entry.rank ===
+                                2
+                              ? "🥈"
+                              : "🥉"}
                           </td>
-                        )}
 
-                      </tr>
-                    ))}
+                          <td className="whitespace-nowrap p-3 font-semibold">
+                            {
+                              entry
+                                .player
+                                .displayName
+                            }
+                          </td>
+
+                          <td className="p-3 text-center text-lg font-bold text-yellow-400">
+                            {
+                              entry.totalPoints
+                            }
+                          </td>
+
+                          <td className="p-3 text-center">
+                            {
+                              entry.resultPoints
+                            }
+                          </td>
+
+                          <td className="p-3 text-center">
+                            {
+                              entry.exactPoints
+                            }
+                          </td>
+
+                          <td className="p-3 text-center">
+                            {
+                              entry.fttsPoints
+                            }
+                          </td>
+
+                          {activeCompetition.monthlyWinnerEnabled && (
+                            <td className="p-3 text-center">
+                              {
+                                entry.bonusPoints
+                              }
+                            </td>
+                          )}
+
+                        </tr>
+                      )
+                    )}
 
                 </tbody>
 
@@ -947,20 +1176,29 @@ export default function Home() {
 
         </div>
 
-        {/* ===================================================
-            CONFIRMATION MODAL
-            =================================================== */}
+        {/* CONFIRMATION MODAL */}
 
         <ConfirmationModal
-          isOpen={showConfirmation}
-          playerName={playerName}
-          round="Current Round"
-          predictions={predictions}
+          isOpen={
+            showConfirmation
+          }
+          playerName={
+            playerName
+          }
+          round={`Round ${activeRound}`}
+          predictions={predictions.filter(
+            (prediction) =>
+              prediction.scoreSelected
+          )}
           badges={badges}
           onCancel={() =>
-            setShowConfirmation(false)
+            setShowConfirmation(
+              false
+            )
           }
-          onConfirm={confirmSubmission}
+          onConfirm={
+            confirmSubmission
+          }
         />
 
       </div>

@@ -15,13 +15,55 @@ import competitionService, {
 type CompetitionContextType = {
   activeCompetition: CompetitionInfo;
   competitions: CompetitionInfo[];
-  setActiveCompetition: (
-    competitionId: string
-  ) => void;
+  setActiveCompetition: (competitionId: string) => void;
+
+  activeRound: number;
+  setActiveRound: (round: number) => void;
 };
 
 const CompetitionContext =
   createContext<CompetitionContextType | null>(null);
+
+const ACTIVE_ROUNDS_KEY = "csp-active-rounds";
+
+function getSavedRounds(): Record<string, number> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const saved = localStorage.getItem(ACTIVE_ROUNDS_KEY);
+
+  if (!saved) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    ) {
+      return parsed;
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function saveRounds(rounds: Record<string, number>) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  localStorage.setItem(
+    ACTIVE_ROUNDS_KEY,
+    JSON.stringify(rounds)
+  );
+}
 
 export function CompetitionProvider({
   children,
@@ -29,9 +71,9 @@ export function CompetitionProvider({
   children: ReactNode;
 }) {
   // Always start with Betway on the first render.
-  // This keeps the server and client HTML identical.
+  // This keeps server and client HTML identical.
   const [activeCompetition, setActiveCompetitionState] =
-    useState<CompetitionInfo>(() =>
+    useState(() =>
       competitionService.getCompetition("BET")
     );
 
@@ -39,12 +81,28 @@ export function CompetitionProvider({
     () => competitionService.getAllCompetitions()
   );
 
-  // After hydration, load the competition saved in localStorage.
+  // Round 1 is the safe initial value.
+  const [activeRound, setActiveRoundState] =
+    useState<number>(1);
+
+  // After hydration, load saved competition and round.
   useEffect(() => {
     const savedCompetition =
       competitionService.getActiveCompetition();
 
     setActiveCompetitionState(savedCompetition);
+
+    const savedRounds = getSavedRounds();
+
+    const savedRound =
+      savedRounds[savedCompetition.id];
+
+    setActiveRoundState(
+      typeof savedRound === "number" &&
+        savedRound >= 1
+        ? savedRound
+        : 1
+    );
   }, []);
 
   function setActiveCompetition(
@@ -56,6 +114,32 @@ export function CompetitionProvider({
       );
 
     setActiveCompetitionState(competition);
+
+    const savedRounds = getSavedRounds();
+
+    const savedRound =
+      savedRounds[competition.id];
+
+    setActiveRoundState(
+      typeof savedRound === "number" &&
+        savedRound >= 1
+        ? savedRound
+        : 1
+    );
+  }
+
+  function setActiveRound(round: number) {
+    if (!Number.isInteger(round) || round < 1) {
+      return;
+    }
+
+    const rounds = getSavedRounds();
+
+    rounds[activeCompetition.id] = round;
+
+    saveRounds(rounds);
+
+    setActiveRoundState(round);
   }
 
   return (
@@ -64,6 +148,8 @@ export function CompetitionProvider({
         activeCompetition,
         competitions,
         setActiveCompetition,
+        activeRound,
+        setActiveRound,
       }}
     >
       {children}

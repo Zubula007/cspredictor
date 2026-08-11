@@ -73,6 +73,13 @@ export default function Navbar() {
           </Link>
 
           <Link
+            href="/login"
+            className={linkClass("/login")}
+          >
+            🔐 Login
+          </Link>
+
+          <Link
             href="/admin"
             className={linkClass("/admin")}
           >

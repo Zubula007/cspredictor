@@ -5,34 +5,21 @@ import { useRouter } from "next/navigation";
 
 import authService from "../services/authService";
 
-type Mode = "LOGIN" | "REGISTER";
+type Mode = "LOGIN" | "REGISTER" | "FORGOT_PASSWORD";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [mode, setMode] =
-    useState<Mode>("LOGIN");
+  const [mode, setMode] = useState<Mode>("LOGIN");
 
-  const [displayName, setDisplayName] =
-    useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [username, setUsername] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
-
-  const [message, setMessage] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const resetMessages = () => {
     setMessage("");
@@ -50,7 +37,7 @@ export default function LoginPage() {
     resetMessages();
   };
 
-  const handleSubmit = (
+  const handleSubmit = async (
     event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
@@ -58,122 +45,121 @@ export default function LoginPage() {
     resetMessages();
 
     if (!username.trim()) {
-      setError(
-        "Please enter your username."
-      );
-
+      setError("Please enter your username.");
       return;
     }
 
-    if (!password) {
-      setError(
-        "Please enter your password."
-      );
-
+    if (mode !== "FORGOT_PASSWORD" && !password) {
+      setError("Please enter your password.");
       return;
     }
 
     setLoading(true);
 
-    if (mode === "REGISTER") {
-      if (!displayName.trim()) {
-        setError(
-          "Please enter your display name."
-        );
+    try {
+      if (mode === "REGISTER") {
+        if (!displayName.trim()) {
+          setError("Please enter your display name.");
+          setLoading(false);
+          return;
+        }
 
-        setLoading(false);
+        if (password.length < 6) {
+          setError(
+            "Password must be at least 6 characters."
+          );
+          setLoading(false);
+          return;
+        }
 
-        return;
-      }
+        if (password !== confirmPassword) {
+          setError("Passwords do not match.");
+          setLoading(false);
+          return;
+        }
 
-      if (password.length < 6) {
-        setError(
-          "Password must be at least 6 characters."
-        );
-
-        setLoading(false);
-
-        return;
-      }
-
-      if (
-        password !==
-        confirmPassword
-      ) {
-        setError(
-          "Passwords do not match."
-        );
-
-        setLoading(false);
-
-        return;
-      }
-
-      const result =
-        authService.registerPlayer(
+        const result = await authService.registerPlayer(
           displayName,
           username,
           password
         );
 
-      setLoading(false);
+        if (!result.success) {
+          setError(
+            result.error ??
+              "Unable to create your profile."
+          );
+          setLoading(false);
+          return;
+        }
 
-      if (!result.success) {
-        setError(
-          result.error ??
-            "Unable to create your profile."
+        setMessage(
+          "Profile created successfully. Your registration is now awaiting Admin approval."
         );
 
+        setDisplayName("");
+        setUsername("");
+        setPassword("");
+        setConfirmPassword("");
+
+        setLoading(false);
         return;
       }
 
-      setMessage(
-        "✅ Profile created successfully. Your registration is now awaiting Admin approval."
-      );
+      if (mode === "FORGOT_PASSWORD") {
+        setMessage(
+          "Please contact the Admin to reset your password."
+        );
 
-      setDisplayName("");
-      setUsername("");
-      setPassword("");
-      setConfirmPassword("");
+        setLoading(false);
+        return;
+      }
 
-      return;
-    }
-
-    const result =
-      authService.login(
+      const result = await authService.login(
         username,
         password
       );
 
-    setLoading(false);
+      if (!result.success) {
+        setError(
+          result.error ?? "Unable to log in."
+        );
+        setLoading(false);
+        return;
+      }
 
-    if (!result.success) {
-      setError(
-        result.error ??
-          "Unable to log in."
+      setMessage(
+        `Welcome back, ${result.player?.displayName}!`
       );
 
-      return;
+      setLoading(false);
+
+      setTimeout(() => {
+        router.push("/");
+      }, 700);
+    } catch (error) {
+      console.error(
+        "Authentication error:",
+        error
+      );
+
+      setError(
+        "Something went wrong. Please try again."
+      );
+
+      setLoading(false);
     }
-
-    setMessage(
-      `Welcome back, ${result.player?.displayName}!`
-    );
-
-    setTimeout(() => {
-      router.push("/");
-    }, 700);
   };
+
+  const isForgotPassword =
+    mode === "FORGOT_PASSWORD";
 
   return (
     <main className="min-h-screen bg-black px-4 py-10 text-white md:px-6">
-
       <div className="mx-auto max-w-md">
 
         {/* Header */}
-
         <div className="mb-8 text-center">
-
           <div className="text-6xl">
             🏆
           </div>
@@ -185,77 +171,72 @@ export default function LoginPage() {
           <p className="mt-2 text-gray-400">
             Predict. Compete. Conquer.
           </p>
-
         </div>
 
         {/* Card */}
-
         <div className="rounded-3xl border border-yellow-500 bg-gradient-to-b from-zinc-900 to-black p-6 shadow-2xl md:p-8">
 
           {/* Tabs */}
+          {!isForgotPassword && (
+            <div className="mb-8 grid grid-cols-2 gap-2 rounded-xl bg-black p-1">
 
-          <div className="mb-8 grid grid-cols-2 gap-2 rounded-xl bg-black p-1">
+              <button
+                type="button"
+                onClick={() => switchMode("LOGIN")}
+                className={`rounded-lg px-4 py-3 text-sm font-bold transition ${
+                  mode === "LOGIN"
+                    ? "bg-yellow-400 text-black"
+                    : "text-gray-400 hover:bg-zinc-800 hover:text-white"
+                }`}
+              >
+                🔐 Login
+              </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                switchMode("LOGIN")
-              }
-              className={`rounded-lg px-4 py-3 text-sm font-bold transition ${
-                mode === "LOGIN"
-                  ? "bg-yellow-400 text-black"
-                  : "text-gray-400 hover:bg-zinc-800 hover:text-white"
-              }`}
-            >
-              🔐 Login
-            </button>
+              <button
+                type="button"
+                onClick={() =>
+                  switchMode("REGISTER")
+                }
+                className={`rounded-lg px-4 py-3 text-sm font-bold transition ${
+                  mode === "REGISTER"
+                    ? "bg-yellow-400 text-black"
+                    : "text-gray-400 hover:bg-zinc-800 hover:text-white"
+                }`}
+              >
+                👤 Create Profile
+              </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                switchMode("REGISTER")
-              }
-              className={`rounded-lg px-4 py-3 text-sm font-bold transition ${
-                mode === "REGISTER"
-                  ? "bg-yellow-400 text-black"
-                  : "text-gray-400 hover:bg-zinc-800 hover:text-white"
-              }`}
-            >
-              👤 Create Profile
-            </button>
-
-          </div>
+            </div>
+          )}
 
           {/* Heading */}
-
           <div className="mb-6 text-center">
-
             <h2 className="text-2xl font-extrabold text-white">
               {mode === "LOGIN"
                 ? "Welcome Back"
-                : "Create Your Profile"}
+                : mode === "REGISTER"
+                ? "Create Your Profile"
+                : "Forgot Password"}
             </h2>
 
             <p className="mt-2 text-sm text-gray-400">
               {mode === "LOGIN"
                 ? "Log in to access your CSPredictor account."
-                : "Create your player profile to join CSPredictor."}
+                : mode === "REGISTER"
+                ? "Create your player profile to join CSPredictor."
+                : "Enter your username to request a password reset."}
             </p>
-
           </div>
 
           {/* Form */}
-
           <form
             onSubmit={handleSubmit}
             className="space-y-5"
           >
 
             {/* Display Name */}
-
             {mode === "REGISTER" && (
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-300">
                   Display Name
                 </label>
@@ -272,14 +253,11 @@ export default function LoginPage() {
                   autoComplete="name"
                   className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
-
               </div>
             )}
 
             {/* Username */}
-
             <div>
-
               <label className="mb-2 block text-sm font-semibold text-gray-300">
                 Username
               </label>
@@ -296,41 +274,37 @@ export default function LoginPage() {
                 autoComplete="username"
                 className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               />
-
             </div>
 
             {/* Password */}
+            {!isForgotPassword && (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-300">
+                  Password
+                </label>
 
-            <div>
-
-              <label className="mb-2 block text-sm font-semibold text-gray-300">
-                Password
-              </label>
-
-              <input
-                type="password"
-                value={password}
-                onChange={(event) =>
-                  setPassword(
-                    event.target.value
-                  )
-                }
-                placeholder="Enter password"
-                autoComplete={
-                  mode === "LOGIN"
-                    ? "current-password"
-                    : "new-password"
-                }
-                className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-              />
-
-            </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Enter password"
+                  autoComplete={
+                    mode === "LOGIN"
+                      ? "current-password"
+                      : "new-password"
+                  }
+                  className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                />
+              </div>
+            )}
 
             {/* Confirm Password */}
-
             {mode === "REGISTER" && (
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-300">
                   Confirm Password
                 </label>
@@ -347,36 +321,28 @@ export default function LoginPage() {
                   autoComplete="new-password"
                   className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
-
               </div>
             )}
 
             {/* Error */}
-
             {error && (
               <div className="rounded-xl border border-red-500 bg-red-950/30 p-4 text-center">
-
                 <p className="text-sm font-semibold text-red-300">
                   ❌ {error}
                 </p>
-
               </div>
             )}
 
             {/* Success */}
-
             {message && (
               <div className="rounded-xl border border-green-500 bg-green-950/30 p-4 text-center">
-
                 <p className="text-sm font-semibold text-green-300">
                   {message}
                 </p>
-
               </div>
             )}
 
             {/* Submit */}
-
             <button
               type="submit"
               disabled={loading}
@@ -386,65 +352,96 @@ export default function LoginPage() {
                 ? "Please wait..."
                 : mode === "LOGIN"
                 ? "🔐 Login"
-                : "👤 Create Profile"}
+                : mode === "REGISTER"
+                ? "👤 Create Profile"
+                : "🔑 Request Password Reset"}
             </button>
-
           </form>
 
-          {/* Registration Notice */}
+          {/* Forgot Password */}
+          {mode === "LOGIN" && (
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                onClick={() =>
+                  switchMode("FORGOT_PASSWORD")
+                }
+                className="text-sm font-semibold text-yellow-400 transition hover:text-yellow-300"
+              >
+                🔑 Forgot password?
+              </button>
+            </div>
+          )}
 
+          {/* Registration Notice */}
           {mode === "REGISTER" && (
             <div className="mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-
               <p className="text-center text-xs leading-relaxed text-yellow-200">
-
                 ℹ️ New profiles require{" "}
                 <span className="font-bold text-yellow-400">
                   Admin approval
                 </span>{" "}
                 before you can log in and participate.
-
               </p>
+            </div>
+          )}
 
+          {/* Forgot Password Notice */}
+          {mode === "FORGOT_PASSWORD" && (
+            <div className="mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+              <p className="text-center text-xs leading-relaxed text-yellow-200">
+                ℹ️ If you have forgotten your password,
+                please contact the Admin to have your
+                password reset.
+              </p>
             </div>
           )}
 
           {/* Login/Register Switch */}
+          {!isForgotPassword && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-400">
+                {mode === "LOGIN"
+                  ? "Don't have a profile?"
+                  : "Already have a profile?"}
 
-          <div className="mt-6 text-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    switchMode(
+                      mode === "LOGIN"
+                        ? "REGISTER"
+                        : "LOGIN"
+                    )
+                  }
+                  className="ml-2 font-bold text-yellow-400 hover:text-yellow-300"
+                >
+                  {mode === "LOGIN"
+                    ? "Create one"
+                    : "Login"}
+                </button>
+              </p>
+            </div>
+          )}
 
-            <p className="text-sm text-gray-400">
-
-              {mode === "LOGIN"
-                ? "Don't have a profile?"
-                : "Already have a profile?"}
-
+          {/* Back from Forgot Password */}
+          {isForgotPassword && (
+            <div className="mt-6 text-center">
               <button
                 type="button"
                 onClick={() =>
-                  switchMode(
-                    mode === "LOGIN"
-                      ? "REGISTER"
-                      : "LOGIN"
-                  )
+                  switchMode("LOGIN")
                 }
-                className="ml-2 font-bold text-yellow-400 hover:text-yellow-300"
+                className="font-semibold text-yellow-400 hover:text-yellow-300"
               >
-                {mode === "LOGIN"
-                  ? "Create one"
-                  : "Login"}
+                ← Back to Login
               </button>
-
-            </p>
-
-          </div>
-
+            </div>
+          )}
         </div>
 
         {/* Back */}
-
         <div className="mt-6 text-center">
-
           <button
             type="button"
             onClick={() =>
@@ -454,11 +451,8 @@ export default function LoginPage() {
           >
             ← Back to CSPredictor
           </button>
-
         </div>
-
       </div>
-
     </main>
   );
 }

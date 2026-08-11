@@ -4,15 +4,15 @@ import type { Player } from "../types/player";
 const SESSION_KEY = "csp-auth-player";
 
 class AuthService {
-  registerPlayer(
+  async registerPlayer(
     displayName: string,
     username: string,
     passwordHash: string
-  ): {
+  ): Promise<{
     success: boolean;
     player?: Player;
     error?: string;
-  } {
+  }> {
     const cleanDisplayName = displayName.trim();
     const cleanUsername = username.trim().toLowerCase();
 
@@ -37,26 +37,89 @@ class AuthService {
       };
     }
 
-    const existingUsername =
+    /*
+     * Check Supabase first for an existing username.
+     */
+    try {
+      const existingUsername =
+        await playerRepository.getByUsernameFromSupabase(
+          cleanUsername
+        );
+
+      if (existingUsername) {
+        return {
+          success: false,
+          error: "That username is already registered.",
+        };
+      }
+    } catch (error) {
+      console.error(
+        "Supabase username check failed:",
+        error
+      );
+
+      /*
+       * Continue with the local repository as fallback.
+       */
+    }
+
+    /*
+     * Check local repository for an existing username.
+     */
+    const localExistingUsername =
       playerRepository.getByUsername(cleanUsername);
 
-    if (existingUsername) {
+    if (localExistingUsername) {
       return {
         success: false,
         error: "That username is already registered.",
       };
     }
 
-    const existingDisplayName =
-      playerRepository.getByDisplayName(cleanDisplayName);
+    /*
+     * Check Supabase for an existing display name.
+     */
+    try {
+      const existingDisplayName =
+        await playerRepository.getByDisplayNameFromSupabase(
+          cleanDisplayName
+        );
 
-    if (existingDisplayName) {
+      if (existingDisplayName) {
+        return {
+          success: false,
+          error: "That display name is already registered.",
+        };
+      }
+    } catch (error) {
+      console.error(
+        "Supabase display name check failed:",
+        error
+      );
+
+      /*
+       * Continue with the local repository as fallback.
+       */
+    }
+
+    /*
+     * Check local repository for an existing display name.
+     */
+    const localExistingDisplayName =
+      playerRepository.getByDisplayName(
+        cleanDisplayName
+      );
+
+    if (localExistingDisplayName) {
       return {
         success: false,
         error: "That display name is already registered.",
       };
     }
 
+    /*
+     * New registrations always begin as PENDING.
+     */
     const newPlayer: Player = {
       id: crypto.randomUUID(),
       displayName: cleanDisplayName,
@@ -68,7 +131,28 @@ class AuthService {
       approvalStatus: "PENDING",
     };
 
+    /*
+     * Save locally.
+     */
     playerRepository.addPlayer(newPlayer);
+
+    /*
+     * Save to Supabase.
+     */
+    try {
+      await playerRepository.syncPlayersToSupabase([
+        newPlayer,
+      ]);
+    } catch (error) {
+      console.error(
+        "Unable to sync new player to Supabase:",
+        error
+      );
+
+      /*
+       * Local registration has already succeeded.
+       */
+    }
 
     return {
       success: true,
@@ -76,27 +160,135 @@ class AuthService {
     };
   }
 
-  login(
+    async login(
     username: string,
-    passwordHash: string
-  ): {
+    password: string
+  ): Promise<{
     success: boolean;
     player?: Player;
     error?: string;
-  } {
+  }> {
     const cleanUsername = username.trim().toLowerCase();
 
-    const player =
-      playerRepository.getByUsername(cleanUsername);
-
-    if (!player) {
+    if (!cleanUsername) {
       return {
         success: false,
-        error: "Username or password is incorrect.",
+        error: "Please enter your username.",
       };
     }
 
-    if (player.approvalStatus === "PENDING") {
+    if (!password) {
+      return {
+        success: false,
+        error: "Please enter your password.",
+      };
+    }
+
+        let supabasePlayer: Player | undefined;
+    const localPlayer =
+      playerRepository.getByUsername(
+        cleanUsername
+      );
+
+    /*
+     * Get the player from Supabase.
+     */
+    try {
+      supabasePlayer =
+        await playerRepository.getByUsernameFromSupabase(
+          cleanUsername
+        );
+    } catch (error) {
+      console.error(
+        "Supabase login lookup failed:",
+        error
+      );
+    }
+
+    /*
+     * If either record exists, use it for password
+     * verification.
+     *
+     * Prefer the local approved/active record when
+     * the Supabase record has stale approval data.
+     */
+    let player: Player | undefined;
+
+    if (
+      localPlayer &&
+      localPlayer.active &&
+      localPlayer.approvalStatus === "APPROVED"
+    ) {
+      player = localPlayer;
+    } else if (supabasePlayer) {
+      player = supabasePlayer;
+    } else {
+      player = localPlayer;
+    }
+
+    /*
+     * Username does not exist.
+     */
+    if (!player) {
+      return {
+        success: false,
+        error:
+          "Username or password is incorrect.",
+      };
+    }
+
+    /*
+     * Check the password against both records.
+     *
+     * This handles cases where the local and Supabase
+     * player records are temporarily different.
+     */
+    const localPasswordMatches =
+      localPlayer?.passwordHash === password;
+
+    const supabasePasswordMatches =
+      supabasePlayer?.passwordHash === password;
+
+    if (
+      !localPasswordMatches &&
+      !supabasePasswordMatches
+    ) {
+      return {
+        success: false,
+        error:
+          "Username or password is incorrect.",
+      };
+    }
+
+    /*
+     * If the local record has the correct password
+     * and is approved/active, use that record.
+     */
+    if (
+      localPasswordMatches &&
+      localPlayer
+    ) {
+      player = localPlayer;
+    }
+
+    /*
+     * If the Supabase record has the correct password
+     * and the local record does not, use Supabase.
+     */
+    if (
+      !localPasswordMatches &&
+      supabasePasswordMatches &&
+      supabasePlayer
+    ) {
+      player = supabasePlayer;
+    }
+
+    /*
+     * Approval check.
+     */
+    if (
+      player.approvalStatus === "PENDING"
+    ) {
       return {
         success: false,
         error:
@@ -104,7 +296,12 @@ class AuthService {
       };
     }
 
-    if (player.approvalStatus === "REJECTED") {
+    /*
+     * Rejected account.
+     */
+    if (
+      player.approvalStatus === "REJECTED"
+    ) {
       return {
         success: false,
         error:
@@ -112,6 +309,9 @@ class AuthService {
       };
     }
 
+    /*
+     * Account must be active.
+     */
     if (!player.active) {
       return {
         success: false,
@@ -120,13 +320,9 @@ class AuthService {
       };
     }
 
-    if (player.passwordHash !== passwordHash) {
-      return {
-        success: false,
-        error: "Username or password is incorrect.",
-      };
-    }
-
+    /*
+     * Login successful.
+     */
     if (typeof window !== "undefined") {
       localStorage.setItem(
         SESSION_KEY,
@@ -187,3 +383,5 @@ class AuthService {
 const authService = new AuthService();
 
 export default authService;
+
+

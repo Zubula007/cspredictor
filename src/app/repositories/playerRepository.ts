@@ -243,14 +243,88 @@ class PlayerRepository {
       this.mapSupabasePlayer(row)
     );
   }
-async getActivePlayersFromSupabase(): Promise<Player[]> {
-  const players =
-    await this.getAllFromSupabase();
 
-  return players.filter(
-    (player) => player.active
-  );
-}
+  async getActivePlayersFromSupabase(): Promise<Player[]> {
+    const players =
+      await this.getAllFromSupabase();
+
+    return players.filter(
+      (player) => player.active
+    );
+  }
+
+  async getByIdFromSupabase(
+    id: string
+  ): Promise<Player | undefined> {
+    const { data, error } = await supabase
+      .from("players")
+      .select(
+        "id, display_name, joined_at, active, is_admin, username, approval_status, password_hash"
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Unable to find player in Supabase: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      return undefined;
+    }
+
+    return this.mapSupabasePlayer(data);
+  }
+
+  async getByDisplayNameFromSupabase(
+    displayName: string
+  ): Promise<Player | undefined> {
+    const { data, error } = await supabase
+      .from("players")
+      .select(
+        "id, display_name, joined_at, active, is_admin, username, approval_status, password_hash"
+      )
+      .ilike("display_name", displayName)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Unable to find player in Supabase: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      return undefined;
+    }
+
+    return this.mapSupabasePlayer(data);
+  }
+
+  async getByUsernameFromSupabase(
+    username: string
+  ): Promise<Player | undefined> {
+    const { data, error } = await supabase
+      .from("players")
+      .select(
+        "id, display_name, joined_at, active, is_admin, username, approval_status, password_hash"
+      )
+      .ilike("username", username)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Unable to find player in Supabase: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      return undefined;
+    }
+
+    return this.mapSupabasePlayer(data);
+  }
+
   async syncPlayersToSupabase(
     sourcePlayers: Player[]
   ): Promise<void> {

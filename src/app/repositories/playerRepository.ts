@@ -243,7 +243,14 @@ class PlayerRepository {
       this.mapSupabasePlayer(row)
     );
   }
+async getActivePlayersFromSupabase(): Promise<Player[]> {
+  const players =
+    await this.getAllFromSupabase();
 
+  return players.filter(
+    (player) => player.active
+  );
+}
   async syncPlayersToSupabase(
     sourcePlayers: Player[]
   ): Promise<void> {

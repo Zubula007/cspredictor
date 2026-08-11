@@ -19,7 +19,25 @@ export default function PlayerForm({
   >([]);
 
   useEffect(() => {
-    setPlayers(playerRepository.getActivePlayers());
+    const loadPlayers = async () => {
+      try {
+        const activePlayers =
+          await playerRepository.getActivePlayersFromSupabase();
+
+        setPlayers(activePlayers);
+      } catch (error) {
+        console.error(
+          "Unable to load active players from Supabase:",
+          error
+        );
+
+        setPlayers(
+          playerRepository.getActivePlayers()
+        );
+      }
+    };
+
+    loadPlayers();
   }, []);
 
   const handlePlayerChange = (

@@ -1,5 +1,6 @@
 import players from "../data/players";
 import type { Player } from "../types/player";
+import { supabase } from "../lib/supabase";
 
 const STORAGE_KEY = "cspredictor-players";
 
@@ -192,6 +193,84 @@ class PlayerRepository {
     this.savePlayers();
 
     return true;
+  }
+
+  private mapSupabasePlayer(row: {
+    id: string;
+    display_name: string;
+    joined_at: string | null;
+    active: boolean;
+    is_admin: boolean;
+    username: string | null;
+    approval_status: string | null;
+    password_hash: string | null;
+  }): Player {
+    const approvalStatus =
+      row.approval_status === "PENDING" ||
+      row.approval_status === "APPROVED" ||
+      row.approval_status === "REJECTED"
+        ? row.approval_status
+        : undefined;
+
+    return {
+      id: row.id,
+      displayName: row.display_name,
+      joinedAt: row.joined_at ?? "",
+      active: row.active,
+      isAdmin: row.is_admin,
+      username: row.username ?? undefined,
+      passwordHash:
+        row.password_hash ?? undefined,
+      approvalStatus,
+    };
+  }
+
+  async getAllFromSupabase(): Promise<Player[]> {
+    const { data, error } = await supabase
+      .from("players")
+      .select(
+        "id, display_name, joined_at, active, is_admin, username, approval_status, password_hash"
+      )
+      .order("id");
+
+    if (error) {
+      throw new Error(
+        `Unable to load players from Supabase: ${error.message}`
+      );
+    }
+
+    return (data ?? []).map((row) =>
+      this.mapSupabasePlayer(row)
+    );
+  }
+
+  async syncPlayersToSupabase(
+    sourcePlayers: Player[]
+  ): Promise<void> {
+    const rows = sourcePlayers.map((player) => ({
+      id: player.id,
+      display_name: player.displayName,
+      joined_at: player.joinedAt || null,
+      active: player.active,
+      is_admin: player.isAdmin,
+      username: player.username ?? null,
+      approval_status:
+        player.approvalStatus ?? null,
+      password_hash:
+        player.passwordHash ?? null,
+    }));
+
+    const { error } = await supabase
+      .from("players")
+      .upsert(rows, {
+        onConflict: "id",
+      });
+
+    if (error) {
+      throw new Error(
+        `Unable to sync players to Supabase: ${error.message}`
+      );
+    }
   }
 }
 

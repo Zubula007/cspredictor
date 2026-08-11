@@ -2,16 +2,24 @@ import playerRepository from "../repositories/playerRepository";
 import type { Player } from "../types/player";
 
 class PlayerService {
-  getPlayers(): Player[] {
+  getActivePlayers(): Player[] {
     return playerRepository.getActivePlayers();
   }
 
-  getPlayer(id: string): Player | undefined {
+  getById(id: string): Player | undefined {
     return playerRepository.getById(id);
   }
 
-  getPlayerByName(displayName: string): Player | undefined {
-    return playerRepository.getByDisplayName(displayName);
+  getByDisplayName(
+    displayName: string
+  ): Player | undefined {
+    return playerRepository.getByDisplayName(
+      displayName
+    );
+  }
+
+  async getAllFromSupabase(): Promise<Player[]> {
+    return playerRepository.getAllFromSupabase();
   }
 }
 

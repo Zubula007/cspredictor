@@ -55,15 +55,34 @@ export default function PSLImportPage() {
   const competitionId =
     activeCompetition.id as CompetitionId;
 
-  const loadStoredImports = () => {
-    const stored =
-      pslImportRepository.getAll();
+  /**
+   * Load PSL imports.
+   *
+   * The repository is now asynchronous because
+   * PSL import data is being migrated to Supabase.
+   */
+  const loadStoredImports = async () => {
+    try {
+      const stored =
+        await pslImportRepository.getAll();
 
-    setImports(stored);
+      setImports(stored);
+    } catch (err) {
+      console.error(
+        "Unable to load PSL imports:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load PSL imports."
+      );
+    }
   };
 
   useEffect(() => {
-    loadStoredImports();
+    void loadStoredImports();
   }, [activeCompetition.id]);
 
   const handleImport = async () => {
@@ -89,9 +108,9 @@ export default function PSLImportPage() {
         return;
       }
 
-      pslImportRepository.addMany(matches);
+      await pslImportRepository.addMany(matches);
 
-      loadStoredImports();
+      await loadStoredImports();
 
       setMessage(
         `${matches.length} ${importType.toLowerCase()}${
@@ -114,28 +133,35 @@ export default function PSLImportPage() {
     }
   };
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
     setError(null);
     setMessage(null);
 
-    const importItem =
-      pslImportRepository.getById(id);
-
-    if (!importItem) {
-      setError(
-        "Unable to find the PSL import."
-      );
-
-      return;
-    }
-
     try {
-      pslApprovalService.approveImport(
+      const importItem =
+        await pslImportRepository.getById(id);
+
+      if (!importItem) {
+        setError(
+          "Unable to find the PSL import."
+        );
+
+        return;
+      }
+
+      /**
+       * IMPORTANT:
+       *
+       * Wait for the fixture to be created/updated
+       * in Supabase before marking the PSL import
+       * as Approved.
+       */
+      await pslApprovalService.approveImport(
         importItem
       );
 
       const updated =
-        pslImportRepository.approve(
+        await pslImportRepository.approve(
           id,
           "Zweli"
         );
@@ -148,7 +174,7 @@ export default function PSLImportPage() {
         return;
       }
 
-      loadStoredImports();
+      await loadStoredImports();
 
       setMessage(
         "PSL item approved and added to CSPredictor successfully."
@@ -167,26 +193,39 @@ export default function PSLImportPage() {
     }
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     setError(null);
     setMessage(null);
 
-    const updated =
-      pslImportRepository.reject(
-        id,
-        "Zweli",
-        "Rejected by admin."
+    try {
+      const updated =
+        await pslImportRepository.reject(
+          id,
+          "Zweli",
+          "Rejected by admin."
+        );
+
+      if (updated) {
+        await loadStoredImports();
+
+        setMessage(
+          "PSL item rejected."
+        );
+      } else {
+        setError(
+          "Unable to reject the PSL item."
+        );
+      }
+    } catch (err) {
+      console.error(
+        "PSL rejection failed:",
+        err
       );
 
-    if (updated) {
-      loadStoredImports();
-
-      setMessage(
-        "PSL item rejected."
-      );
-    } else {
       setError(
-        "Unable to reject the PSL item."
+        err instanceof Error
+          ? err.message
+          : "Failed to reject the PSL item."
       );
     }
   };
@@ -224,7 +263,7 @@ export default function PSLImportPage() {
     setError(null);
   };
 
-  const saveAmendment = () => {
+  const saveAmendment = async () => {
     if (!editingId || !editForm) {
       return;
     }
@@ -293,51 +332,64 @@ export default function PSLImportPage() {
       return;
     }
 
-    const updated =
-      pslImportRepository.update(
-        editingId,
-        {
-          round: parsedRound,
-          matchDate:
-            editForm.matchDate,
-          kickOff:
-            editForm.kickOff.trim(),
-          displayDate:
-            editForm.displayDate.trim(),
-          homeTeam:
-            editForm.homeTeam.trim(),
-          awayTeam:
-            editForm.awayTeam.trim(),
-          status:
-            editForm.status,
-          homeScore,
-          awayScore,
-          firstTeamToScore:
-            editForm.firstTeamToScore,
+    try {
+      const updated =
+        await pslImportRepository.update(
+          editingId,
+          {
+            round: parsedRound,
+            matchDate:
+              editForm.matchDate,
+            kickOff:
+              editForm.kickOff.trim(),
+            displayDate:
+              editForm.displayDate.trim(),
+            homeTeam:
+              editForm.homeTeam.trim(),
+            awayTeam:
+              editForm.awayTeam.trim(),
+            status:
+              editForm.status,
+            homeScore,
+            awayScore,
+            firstTeamToScore:
+              editForm.firstTeamToScore,
 
-          reviewStatus: "Pending",
-          reviewedAt: undefined,
-          reviewedBy: undefined,
-          rejectionReason: undefined,
-        }
+            reviewStatus: "Pending",
+            reviewedAt: undefined,
+            reviewedBy: undefined,
+            rejectionReason: undefined,
+          }
+        );
+
+      if (!updated) {
+        setError(
+          "Unable to save the amendment."
+        );
+
+        return;
+      }
+
+      await loadStoredImports();
+
+      setEditingId(null);
+      setEditForm(null);
+
+      setMessage(
+        "PSL information amended successfully. It remains Pending until approved."
+      );
+    } catch (err) {
+      console.error(
+        "PSL amendment failed:",
+        err
       );
 
-    if (!updated) {
       setError(
-        "Unable to save the amendment."
+        err instanceof Error
+          ? err.message
+          : "Unable to save the amendment."
       );
-
-      return;
     }
-
-    loadStoredImports();
-
-    setEditingId(null);
-    setEditForm(null);
-
-    setMessage(
-      "PSL information amended successfully. It remains Pending until approved."
-    );
   };
 
   const updateEditField = <
@@ -607,8 +659,7 @@ export default function PSLImportPage() {
                           {item.importType ===
                             "Result" && (
                             <p className="mt-3 text-2xl font-extrabold text-yellow-400">
-                              {item.homeScore ?? 0}{" "}
-                              -{" "}
+                              {item.homeScore ?? 0} -{" "}
                               {item.awayScore ?? 0}
                             </p>
                           )}
@@ -628,7 +679,7 @@ export default function PSLImportPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              handleApprove(item.id)
+                              void handleApprove(item.id)
                             }
                             className="rounded-xl bg-green-600 py-3 text-sm font-extrabold text-white transition hover:bg-green-500"
                           >
@@ -638,7 +689,7 @@ export default function PSLImportPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              handleReject(item.id)
+                              void handleReject(item.id)
                             }
                             className="rounded-xl bg-red-600 py-3 text-sm font-extrabold text-white transition hover:bg-red-500"
                           >
@@ -911,7 +962,9 @@ export default function PSLImportPage() {
                         <div className="grid grid-cols-2 gap-3 pt-2">
                           <button
                             type="button"
-                            onClick={saveAmendment}
+                            onClick={() =>
+                              void saveAmendment()
+                            }
                             className="rounded-xl bg-yellow-400 py-3 text-sm font-extrabold text-black transition hover:bg-yellow-300"
                           >
                             💾 Save Amendment

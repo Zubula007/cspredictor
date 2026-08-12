@@ -1,10 +1,35 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import leaderboardService from "../../../services/leaderboardService";
+import type { LeaderboardEntry } from "../../../services/leaderboardService";
 
 export default function PlayerStatsPage() {
-  const leaderboard =
-    leaderboardService.getLeaderboard();
+  const [leaderboard, setLeaderboard] =
+    useState<LeaderboardEntry[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadLeaderboard() {
+      try {
+        const data =
+          await leaderboardService.getLeaderboard();
+
+        setLeaderboard(data);
+      } catch (error) {
+        console.error(
+          "Failed to load player statistics:",
+          error
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadLeaderboard();
+  }, []);
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
@@ -23,8 +48,15 @@ export default function PlayerStatsPage() {
 
         </div>
 
+        {loading ? (
 
-        {leaderboard.length === 0 ? (
+          <div className="mt-10 rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
+            <p className="text-gray-400">
+              Loading player statistics...
+            </p>
+          </div>
+
+        ) : leaderboard.length === 0 ? (
 
           <div className="mt-10 rounded-2xl border border-yellow-500 bg-zinc-900 p-8 text-center">
             <p className="text-gray-400">
@@ -55,7 +87,6 @@ export default function PlayerStatsPage() {
 
                 </div>
 
-
                 <div className="mt-6 grid grid-cols-2 gap-4">
 
                   <div className="rounded-xl bg-black p-4">
@@ -68,7 +99,6 @@ export default function PlayerStatsPage() {
                     </p>
                   </div>
 
-
                   <div className="rounded-xl bg-black p-4">
                     <p className="text-sm text-gray-400">
                       Correct Results
@@ -78,7 +108,6 @@ export default function PlayerStatsPage() {
                       {entry.correctResults}
                     </p>
                   </div>
-
 
                   <div className="rounded-xl bg-black p-4">
                     <p className="text-sm text-gray-400">
@@ -90,7 +119,6 @@ export default function PlayerStatsPage() {
                     </p>
                   </div>
 
-
                   <div className="rounded-xl bg-black p-4">
                     <p className="text-sm text-gray-400">
                       Correct FTTS
@@ -101,9 +129,7 @@ export default function PlayerStatsPage() {
                     </p>
                   </div>
 
-
                 </div>
-
 
                 <div className="mt-6 border-t border-zinc-700 pt-4">
 

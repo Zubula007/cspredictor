@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   ReactNode,
 } from "react";
@@ -13,12 +14,12 @@ import type { Fixture } from "../types/fixture";
 type FixtureContextType = {
   fixtures: Fixture[];
 
-  refreshFixtures: () => void;
+  refreshFixtures: () => Promise<void>;
 
   updateFixture: (
     fixtureId: string,
     updates: Partial<Fixture>
-  ) => void;
+  ) => Promise<void>;
 };
 
 const FixtureContext =
@@ -29,40 +30,47 @@ export function FixtureProvider({
 }: {
   children: ReactNode;
 }) {
-  const [fixtures, setFixtures] = useState<Fixture[]>(
-    () => fixtureRepository.getAll()
-  );
+  const [fixtures, setFixtures] =
+    useState<Fixture[]>([]);
 
   /**
-   * Reload fixtures from the repository
-   * Used after:
-   * - publishing results
-   * - editing fixtures
-   * - changing fixture status
+   * Load fixtures from Supabase
    */
-  function refreshFixtures() {
-    const updatedFixtures =
-      fixtureRepository.getAll();
+  async function refreshFixtures() {
+    try {
+      const updatedFixtures =
+        await fixtureRepository.getAll();
 
-    setFixtures([
-      ...updatedFixtures,
-    ]);
+      setFixtures(updatedFixtures);
+    } catch (error) {
+      console.error(
+        "Failed to load fixtures:",
+        error
+      );
+    }
   }
 
   /**
-   * Update one fixture and immediately
-   * refresh the global fixture state
+   * Initial fixture load
    */
-  function updateFixture(
+  useEffect(() => {
+    refreshFixtures();
+  }, []);
+
+  /**
+   * Update one fixture and immediately
+   * refresh the global fixture state.
+   */
+  async function updateFixture(
     fixtureId: string,
     updates: Partial<Fixture>
   ) {
-    fixtureRepository.updateFixture(
+    await fixtureRepository.updateFixture(
       fixtureId,
       updates
     );
 
-    refreshFixtures();
+    await refreshFixtures();
   }
 
   return (
@@ -79,7 +87,8 @@ export function FixtureProvider({
 }
 
 export function useFixtures() {
-  const context = useContext(FixtureContext);
+  const context =
+    useContext(FixtureContext);
 
   if (!context) {
     throw new Error(

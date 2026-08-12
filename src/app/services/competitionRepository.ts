@@ -3,8 +3,9 @@ import fixtureRepository from "../repositories/fixtureRepository";
 import { CompetitionIds } from "../lib/enums";
 
 class CompetitionService {
-  getActiveCompetition(): string {
-    const fixtures = fixtureRepository.getAll();
+  async getActiveCompetition(): Promise<string> {
+    const fixtures =
+      await fixtureRepository.getAll();
 
     const now = new Date();
 
@@ -34,17 +35,19 @@ class CompetitionService {
     }
 
     // No upcoming fixtures -> latest competition played
-    const completed = [...fixtures].sort((a, b) => {
-      const aDate = new Date(
-        `${a.matchDate}T${a.kickOff}:00`
-      ).getTime();
+    const completed = [...fixtures].sort(
+      (a, b) => {
+        const aDate = new Date(
+          `${a.matchDate}T${a.kickOff}:00`
+        ).getTime();
 
-      const bDate = new Date(
-        `${b.matchDate}T${b.kickOff}:00`
-      ).getTime();
+        const bDate = new Date(
+          `${b.matchDate}T${b.kickOff}:00`
+        ).getTime();
 
-      return bDate - aDate;
-    });
+        return bDate - aDate;
+      }
+    );
 
     if (completed.length > 0) {
       return completed[0].competitionId;
@@ -55,6 +58,7 @@ class CompetitionService {
   }
 }
 
-const competitionService = new CompetitionService();
+const competitionService =
+  new CompetitionService();
 
 export default competitionService;

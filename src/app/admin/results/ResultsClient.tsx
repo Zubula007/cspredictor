@@ -41,10 +41,9 @@ export default function ResultsClient() {
     }
   }, [fixtureFromUrl]);
 
-  const selectedFixture =
-    fixtures.find(
-      (fixture) => fixture.id === selectedFixtureId
-    );
+  const selectedFixture = fixtures.find(
+    (fixture) => fixture.id === selectedFixtureId
+  );
 
   const availableFTTS = useMemo(() => {
     if (homeScore === 0 && awayScore === 0) {
@@ -95,7 +94,7 @@ export default function ResultsClient() {
     setFirstTeamToScore("");
   }, [availableFTTS]);
 
-  function publishResult() {
+  async function publishResult() {
     if (!selectedFixtureId) return;
 
     if (!firstTeamToScore) {
@@ -103,7 +102,7 @@ export default function ResultsClient() {
       return;
     }
 
-    const result = fixtureService.publishResult(
+    const result = await fixtureService.publishResult(
       selectedFixtureId,
       homeScore,
       awayScore,
@@ -261,4 +260,3 @@ export default function ResultsClient() {
     </main>
   );
 }
-

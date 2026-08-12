@@ -40,10 +40,12 @@ export default function MatchCentrePage() {
   const [selectedShareIds, setSelectedShareIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const loadData = () => {
-      const loadedFixtures = fixtureRepository
-        .getByCompetition(activeCompetition.id)
-        .sort((a, b) => {
+    const loadData = async () => {
+      const loadedFixtures = (
+  await fixtureRepository.getByCompetition(
+    activeCompetition.id
+  )
+).sort((a, b) => { 
           if (a.round !== b.round) {
             return a.round - b.round;
           }
@@ -1840,3 +1842,4 @@ export default function MatchCentrePage() {
     </main>
   );
 }
+

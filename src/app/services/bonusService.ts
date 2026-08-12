@@ -3,12 +3,13 @@ import predictionRepository from "../repositories/predictionRepository";
 import fixtureRepository from "../repositories/fixtureRepository";
 
 class BonusService {
-  recalculateRound(round: number): void {
+  async recalculateRound(round: number): Promise<void> {
     // Remove any existing bonus for this round
     bonusRepository.removeRoundBonus(round);
 
     // Get all fixtures in this round
-    const fixtures = fixtureRepository.getByRound(round);
+    const fixtures =
+      await fixtureRepository.getByRound(round);
 
     // Only continue if every fixture has been published
     const allPublished = fixtures.every(
@@ -24,7 +25,9 @@ class BonusService {
 
     for (const fixture of fixtures) {
       const predictions =
-        predictionRepository.getByFixture(fixture.id);
+        predictionRepository.getByFixture(
+          fixture.id
+        );
 
       for (const prediction of predictions) {
         const current =
@@ -47,9 +50,11 @@ class BonusService {
     );
 
     // Players sharing highest score
-    const winners = Array.from(totals.entries()).filter(
-      ([, points]) => points === highestScore
-    );
+    const winners =
+      Array.from(totals.entries()).filter(
+        ([, points]) =>
+          points === highestScore
+      );
 
     // No bonus if tied
     if (winners.length !== 1) {
@@ -72,4 +77,6 @@ class BonusService {
   }
 }
 
-export default new BonusService();
+const bonusService = new BonusService();
+
+export default bonusService;

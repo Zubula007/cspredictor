@@ -1,199 +1,415 @@
 import fixtures from "../data/fixtures";
 import type { Fixture } from "../types/fixture";
 import type { FirstTeamToScoreType } from "../lib/enums";
-
-const STORAGE_KEY = "cspredictor-fixtures";
+import { supabase } from "../lib/supabase";
 
 class FixtureRepository {
-  private fixtures: Fixture[];
+  private mapSupabaseFixture(
+    row: Record<string, unknown>
+  ): Fixture {
+    return {
+      id: row.id as string,
 
-  constructor() {
-    this.fixtures = this.loadFixtures();
+      competitionId:
+        row.competition_id as Fixture["competitionId"],
+
+      round:
+        (row.round as number) ?? 0,
+
+      streak: 0,
+
+      matchDate:
+        (row.match_date as string) ?? "",
+
+      kickOff:
+        (row.kick_off as string) ?? "",
+
+      displayDate:
+        (row.match_date as string) ?? "",
+
+      homeTeam:
+        row.home_team as string,
+
+      awayTeam:
+        row.away_team as string,
+
+      status:
+        row.status as Fixture["status"],
+
+      homeScore:
+        row.home_score as number | undefined,
+
+      awayScore:
+        row.away_score as number | undefined,
+
+      firstTeamToScore:
+        row.first_team_to_score as
+          | "Home"
+          | "Away"
+          | "None"
+          | null
+          | undefined,
+
+      published:
+        (row.published as boolean) ?? false,
+    };
   }
 
-  private loadFixtures(): Fixture[] {
-    if (typeof window === "undefined") {
-      return [...fixtures];
-    }
+  private mapFixtureToSupabase(
+    fixture: Fixture
+  ) {
+    return {
+      id: fixture.id,
 
-    const saved = localStorage.getItem(STORAGE_KEY);
+      competition_id:
+        fixture.competitionId,
 
-    if (saved) {
-      return JSON.parse(saved);
-    }
+      round:
+        fixture.round,
 
-    return [...fixtures];
+      match_date:
+        fixture.matchDate,
+
+      home_team:
+        fixture.homeTeam,
+
+      away_team:
+        fixture.awayTeam,
+
+      home_score:
+        fixture.homeScore ?? null,
+
+      away_score:
+        fixture.awayScore ?? null,
+
+      first_team_to_score:
+        fixture.firstTeamToScore ?? null,
+
+      status:
+        fixture.status,
+
+      kick_off:
+        fixture.kickOff,
+
+      published:
+        fixture.published,
+    };
   }
 
-  private refreshFixtures() {
-    if (typeof window === "undefined") {
-      return;
+  async getAllFromSupabase(): Promise<Fixture[]> {
+    const { data, error } = await supabase
+      .from("fixtures")
+      .select("*")
+      .order("match_date", {
+        ascending: true,
+      });
+
+    if (error) {
+      throw new Error(
+        `Unable to load fixtures from Supabase: ${error.message}`
+      );
     }
 
-    this.fixtures = this.loadFixtures();
-  }
-
-  private saveFixtures() {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(this.fixtures)
+    return (data ?? []).map(
+      (row) =>
+        this.mapSupabaseFixture(
+          row as Record<string, unknown>
+        )
     );
   }
 
-  getAll(): Fixture[] {
-    this.refreshFixtures();
+  async getByCompetitionFromSupabase(
+    competitionId: string
+  ): Promise<Fixture[]> {
+    const { data, error } = await supabase
+      .from("fixtures")
+      .select("*")
+      .eq(
+        "competition_id",
+        competitionId
+      )
+      .order("match_date", {
+        ascending: true,
+      });
 
-    return this.fixtures;
+    if (error) {
+      throw new Error(
+        `Unable to load competition fixtures from Supabase: ${error.message}`
+      );
+    }
+
+    return (data ?? []).map(
+      (row) =>
+        this.mapSupabaseFixture(
+          row as Record<string, unknown>
+        )
+    );
   }
 
-  getPublished(): Fixture[] {
-    this.refreshFixtures();
+  async getAll(): Promise<Fixture[]> {
+    return this.getAllFromSupabase();
+  }
 
-    return this.fixtures.filter(
+  async getPublished(): Promise<Fixture[]> {
+    const fixtures =
+      await this.getAllFromSupabase();
+
+    return fixtures.filter(
       (fixture) => fixture.published
     );
   }
 
-  getByCompetition(
+  async getByCompetition(
     competitionId: string
-  ): Fixture[] {
-    this.refreshFixtures();
-
-    return this.fixtures.filter(
-      (fixture) =>
-        fixture.competitionId === competitionId
+  ): Promise<Fixture[]> {
+    return this.getByCompetitionFromSupabase(
+      competitionId
     );
   }
 
-  getById(
+  async getById(
     id: string
-  ): Fixture | undefined {
-    this.refreshFixtures();
+  ): Promise<Fixture | undefined> {
+    const { data, error } = await supabase
+      .from("fixtures")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
 
-    return this.fixtures.find(
-      (fixture) =>
-        fixture.id === id
-    );
-  }
-
-  getByRound(
-    round: number
-  ): Fixture[] {
-    this.refreshFixtures();
-
-    return this.fixtures.filter(
-      (fixture) =>
-        fixture.round === round
-    );
-  }
-
-  getByStreak(
-    streak: number
-  ): Fixture[] {
-    this.refreshFixtures();
-
-    return this.fixtures.filter(
-      (fixture) =>
-        fixture.streak === streak
-    );
-  }
-
-  addFixture(
-    fixture: Fixture
-  ): Fixture {
-    this.refreshFixtures();
-
-    this.fixtures.push(fixture);
-
-    this.saveFixtures();
-
-    return fixture;
-  }
-
-  updateFixture(
-    fixtureId: string,
-    updates: Partial<Fixture>
-  ): Fixture | undefined {
-    this.refreshFixtures();
-
-    const fixture =
-      this.fixtures.find(
-        (item) =>
-          item.id === fixtureId
+    if (error) {
+      throw new Error(
+        `Unable to load fixture from Supabase: ${error.message}`
       );
+    }
 
-    if (!fixture) {
+    if (!data) {
       return undefined;
     }
 
-    Object.assign(
-      fixture,
-      updates
+    return this.mapSupabaseFixture(
+      data as Record<string, unknown>
     );
-
-    this.saveFixtures();
-
-    return fixture;
   }
 
-  deleteFixture(
-    fixtureId: string
-  ): boolean {
+  async getByRound(
+    round: number
+  ): Promise<Fixture[]> {
+    const { data, error } = await supabase
+      .from("fixtures")
+      .select("*")
+      .eq("round", round)
+      .order("match_date", {
+        ascending: true,
+      });
 
-    this.refreshFixtures();
-
-    const originalLength =
-      this.fixtures.length;
-
-    this.fixtures =
-      this.fixtures.filter(
-        (fixture) =>
-          fixture.id !== fixtureId
+    if (error) {
+      throw new Error(
+        `Unable to load fixtures by round from Supabase: ${error.message}`
       );
-
-    if (
-      this.fixtures.length === originalLength
-    ) {
-      return false;
     }
 
-    this.saveFixtures();
-
-    return true;
+    return (data ?? []).map(
+      (row) =>
+        this.mapSupabaseFixture(
+          row as Record<string, unknown>
+        )
+    );
   }
 
-  updateResult(
+  async getByStreak(
+    streak: number
+  ): Promise<Fixture[]> {
+    /*
+     * The current Supabase fixtures table does not
+     * contain a streak column.
+     *
+     * Keep the method for compatibility with the
+     * existing application interface.
+     *
+     * Streak remains application-derived for now.
+     */
+    const allFixtures =
+      await this.getAllFromSupabase();
+
+    if (streak === 0) {
+      return allFixtures;
+    }
+
+    return allFixtures.filter(
+      (fixture) => fixture.streak === streak
+    );
+  }
+
+  async addFixture(
+    fixture: Fixture
+  ): Promise<Fixture> {
+    const payload =
+      this.mapFixtureToSupabase(fixture);
+
+    const { data, error } = await supabase
+      .from("fixtures")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(
+        `Unable to add fixture to Supabase: ${error.message}`
+      );
+    }
+
+    return this.mapSupabaseFixture(
+      data as Record<string, unknown>
+    );
+  }
+
+  async updateFixture(
+    fixtureId: string,
+    updates: Partial<Fixture>
+  ): Promise<Fixture | undefined> {
+    const supabaseUpdates: Record<
+      string,
+      unknown
+    > = {};
+
+    if (
+      updates.competitionId !== undefined
+    ) {
+      supabaseUpdates.competition_id =
+        updates.competitionId;
+    }
+
+    if (updates.round !== undefined) {
+      supabaseUpdates.round =
+        updates.round;
+    }
+
+    if (updates.matchDate !== undefined) {
+      supabaseUpdates.match_date =
+        updates.matchDate;
+    }
+
+    if (updates.kickOff !== undefined) {
+      supabaseUpdates.kick_off =
+        updates.kickOff;
+    }
+
+    if (updates.homeTeam !== undefined) {
+      supabaseUpdates.home_team =
+        updates.homeTeam;
+    }
+
+    if (updates.awayTeam !== undefined) {
+      supabaseUpdates.away_team =
+        updates.awayTeam;
+    }
+
+    if (updates.homeScore !== undefined) {
+      supabaseUpdates.home_score =
+        updates.homeScore;
+    }
+
+    if (updates.awayScore !== undefined) {
+      supabaseUpdates.away_score =
+        updates.awayScore;
+    }
+
+    if (
+      updates.firstTeamToScore !== undefined
+    ) {
+      supabaseUpdates.first_team_to_score =
+        updates.firstTeamToScore;
+    }
+
+    if (updates.status !== undefined) {
+      supabaseUpdates.status =
+        updates.status;
+    }
+
+    if (updates.published !== undefined) {
+      supabaseUpdates.published =
+        updates.published;
+    }
+
+    if (
+      Object.keys(supabaseUpdates).length === 0
+    ) {
+      return this.getById(fixtureId);
+    }
+
+    const { data, error } = await supabase
+      .from("fixtures")
+      .update(supabaseUpdates)
+      .eq("id", fixtureId)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Unable to update fixture in Supabase: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      return undefined;
+    }
+
+    return this.mapSupabaseFixture(
+      data as Record<string, unknown>
+    );
+  }
+
+  async deleteFixture(
+    fixtureId: string
+  ): Promise<boolean> {
+    const { data, error } = await supabase
+      .from("fixtures")
+      .delete()
+      .eq("id", fixtureId)
+      .select("id");
+
+    if (error) {
+      throw new Error(
+        `Unable to delete fixture from Supabase: ${error.message}`
+      );
+    }
+
+    return (data ?? []).length > 0;
+  }
+
+  async updateResult(
     fixtureId: string,
     homeScore: number,
     awayScore: number,
     firstTeamToScore: FirstTeamToScoreType
-  ): Fixture | undefined {
+  ): Promise<Fixture | undefined> {
+    const { data, error } = await supabase
+      .from("fixtures")
+      .update({
+        home_score: homeScore,
+        away_score: awayScore,
+        first_team_to_score:
+          firstTeamToScore,
+        status: "Completed",
+        published: true,
+      })
+      .eq("id", fixtureId)
+      .select("*")
+      .maybeSingle();
 
-    this.refreshFixtures();
-
-    const fixture =
-      this.fixtures.find(
-        (item) =>
-          item.id === fixtureId
+    if (error) {
+      throw new Error(
+        `Unable to update fixture result in Supabase: ${error.message}`
       );
+    }
 
-    if (!fixture) {
+    if (!data) {
       return undefined;
     }
 
-    fixture.homeScore = homeScore;
-    fixture.awayScore = awayScore;
-    fixture.firstTeamToScore = firstTeamToScore;
-    fixture.status = "Completed";
-    fixture.published = true;
-
-    this.saveFixtures();
-
-    return fixture;
+    return this.mapSupabaseFixture(
+      data as Record<string, unknown>
+    );
   }
 
   /**
@@ -201,29 +417,34 @@ class FixtureRepository {
    *
    * Returns fixtures to a fresh testing state:
    * - Removes published results
-   * - Unlocks fixtures
+   * - Resets status to Scheduled
    * - Clears official scores
    */
-  resetFixtures(): void {
-    this.refreshFixtures();
-
-    this.fixtures = this.fixtures.map(
-      (fixture) => ({
-        ...fixture,
-
+  async resetFixtures(): Promise<void> {
+    const { error } = await supabase
+      .from("fixtures")
+      .update({
         published: false,
-
         status: "Scheduled",
-
-        homeScore: undefined,
-
-        awayScore: undefined,
-
-        firstTeamToScore: undefined,
+        home_score: null,
+        away_score: null,
+        first_team_to_score: null,
       })
-    );
+      .not("id", "is", null);
 
-    this.saveFixtures();
+    if (error) {
+      throw new Error(
+        `Unable to reset fixtures in Supabase: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Local seed data retained for reference during
+   * migration and development.
+   */
+  getLocalSeedFixtures(): Fixture[] {
+    return [...fixtures];
   }
 }
 

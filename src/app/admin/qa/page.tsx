@@ -17,126 +17,156 @@ export default function QAToolkitPage() {
   const [bonuses, setBonuses] = useState(0);
 
   const [message, setMessage] = useState("");
-const [qaMode, setQaMode] =
-  useState(false);
 
-const [ignoreValidation, setIgnoreValidation] =
-  useState(false);
+  const [qaMode, setQaMode] =
+    useState(false);
 
-const [ignoreLock, setIgnoreLock] =
-  useState(false);
+  const [ignoreValidation, setIgnoreValidation] =
+    useState(false);
+
+  const [ignoreLock, setIgnoreLock] =
+    useState(false);
 
   useEffect(() => {
-  refreshStats();
+    refreshStats();
 
-  setQaMode(
-    localStorage.getItem("csp-qa-mode") === "true"
-  );
+    setQaMode(
+      localStorage.getItem("csp-qa-mode") === "true"
+    );
 
-  setIgnoreValidation(
-    localStorage.getItem(
-      "csp-ignore-validation"
-    ) === "true"
-  );
+    setIgnoreValidation(
+      localStorage.getItem(
+        "csp-ignore-validation"
+      ) === "true"
+    );
 
-  setIgnoreLock(
-    localStorage.getItem(
-      "csp-ignore-lock"
-    ) === "true"
-  );
-}, []);
+    setIgnoreLock(
+      localStorage.getItem(
+        "csp-ignore-lock"
+      ) === "true"
+    );
+  }, []);
 
-  function refreshStats() {
-  setPlayers(
-    playerRepository.getAll().length
-  );
+  async function refreshStats() {
+    try {
+      const allPlayers =
+        await playerRepository.getAll();
 
-  const allFixtures =
-    fixtureRepository.getAll();
+      const allFixtures =
+        await fixtureRepository.getAll();
 
-  setFixtures(allFixtures.length);
+      const allPredictions =
+        await predictionRepository.getAll();
 
-  setPublishedResults(
-    allFixtures.filter(
-      (fixture) => fixture.published
-    ).length
-  );
+      const allBonuses =
+        await bonusRepository.getAll();
 
-  setPredictions(
-    predictionRepository.getAll().length
-  );
+      setPlayers(allPlayers.length);
 
-  setBonuses(
-    bonusRepository.getAll().length
-  );
-}
+      setFixtures(allFixtures.length);
 
-function toggleQAMode() {
-  const value = !qaMode;
+      setPublishedResults(
+        allFixtures.filter(
+          (fixture) => fixture.published
+        ).length
+      );
 
-  setQaMode(value);
+      setPredictions(
+        allPredictions.length
+      );
 
-  localStorage.setItem(
-    "csp-qa-mode",
-    String(value)
-  );
-}
+      setBonuses(
+        allBonuses.length
+      );
+    } catch (error) {
+      console.error(
+        "Failed to refresh QA statistics:",
+        error
+      );
 
-function toggleValidation() {
-  const value = !ignoreValidation;
-
-  setIgnoreValidation(value);
-
-  localStorage.setItem(
-    "csp-ignore-validation",
-    String(value)
-  );
-}
-
-function toggleLock() {
-  const value = !ignoreLock;
-
-  setIgnoreLock(value);
-
-  localStorage.setItem(
-    "csp-ignore-lock",
-    String(value)
-  );
-}
-
-function fullReset() {
-  if (
-    !window.confirm(
-      "Reset the entire QA environment?"
-    )
-  ) {
-    return;
+      setMessage(
+        "❌ Failed to load QA statistics."
+      );
+    }
   }
 
-  predictionRepository.reset();
+  function toggleQAMode() {
+    const value = !qaMode;
 
-  bonusRepository.reset();
+    setQaMode(value);
 
-  fixtureRepository.resetFixtures();
+    localStorage.setItem(
+      "csp-qa-mode",
+      String(value)
+    );
+  }
 
-  localStorage.removeItem(
-    "csp-ui-predictions"
-  );
+  function toggleValidation() {
+    const value = !ignoreValidation;
 
-  localStorage.removeItem(
-    "csp-submitted"
-  );
+    setIgnoreValidation(value);
 
-  localStorage.removeItem(
-    "csp-submittedAt"
-  );
+    localStorage.setItem(
+      "csp-ignore-validation",
+      String(value)
+    );
+  }
 
-  refreshStats();
+  function toggleLock() {
+    const value = !ignoreLock;
 
-  setMessage(
-    "✅ QA Environment Reset Successfully."
-  );
-}
+    setIgnoreLock(value);
+
+    localStorage.setItem(
+      "csp-ignore-lock",
+      String(value)
+    );
+  }
+
+  async function fullReset() {
+    if (
+      !window.confirm(
+        "Reset the entire QA environment?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await predictionRepository.reset();
+
+      await bonusRepository.reset();
+
+      await fixtureRepository.resetFixtures();
+
+      localStorage.removeItem(
+        "csp-ui-predictions"
+      );
+
+      localStorage.removeItem(
+        "csp-submitted"
+      );
+
+      localStorage.removeItem(
+        "csp-submittedAt"
+      );
+
+      await refreshStats();
+
+      setMessage(
+        "✅ QA Environment Reset Successfully."
+      );
+    } catch (error) {
+      console.error(
+        "QA reset failed:",
+        error
+      );
+
+      setMessage(
+        "❌ QA Environment Reset Failed."
+      );
+    }
+  }
 
   const competition =
     competitionService.getActiveCompetition();
@@ -200,53 +230,54 @@ function fullReset() {
 
         <div className="mt-8 rounded-2xl border border-blue-600 bg-blue-950/20 p-6">
 
-  <h2 className="mb-5 text-2xl font-bold text-blue-400">
-    🛠 QA Controls
-  </h2>
+          <h2 className="mb-5 text-2xl font-bold text-blue-400">
+            🛠 QA Controls
+          </h2>
 
-  <div className="space-y-4">
+          <div className="space-y-4">
 
-    <button
-      onClick={toggleQAMode}
-      className={`w-full rounded-xl py-3 font-bold ${
-        qaMode
-          ? "bg-green-600 text-white"
-          : "bg-zinc-700 text-white"
-      }`}
-    >
-      QA Mode: {qaMode ? "ON" : "OFF"}
-    </button>
+            <button
+              onClick={toggleQAMode}
+              className={`w-full rounded-xl py-3 font-bold ${
+                qaMode
+                  ? "bg-green-600 text-white"
+                  : "bg-zinc-700 text-white"
+              }`}
+            >
+              QA Mode: {qaMode ? "ON" : "OFF"}
+            </button>
 
-    <button
-      onClick={toggleValidation}
-      disabled={!qaMode}
-      className={`w-full rounded-xl py-3 font-bold ${
-        ignoreValidation
-          ? "bg-green-600 text-white"
-          : "bg-zinc-700 text-white"
-      } disabled:opacity-40`}
-    >
-      Ignore Prediction Validation:{" "}
-      {ignoreValidation ? "ON" : "OFF"}
-    </button>
+            <button
+              onClick={toggleValidation}
+              disabled={!qaMode}
+              className={`w-full rounded-xl py-3 font-bold ${
+                ignoreValidation
+                  ? "bg-green-600 text-white"
+                  : "bg-zinc-700 text-white"
+              } disabled:opacity-40`}
+            >
+              Ignore Prediction Validation:{" "}
+              {ignoreValidation ? "ON" : "OFF"}
+            </button>
 
-    <button
-      onClick={toggleLock}
-      disabled={!qaMode}
-      className={`w-full rounded-xl py-3 font-bold ${
-        ignoreLock
-          ? "bg-green-600 text-white"
-          : "bg-zinc-700 text-white"
-      } disabled:opacity-40`}
-    >
-      Ignore Prediction Lock:{" "}
-      {ignoreLock ? "ON" : "OFF"}
-    </button>
+            <button
+              onClick={toggleLock}
+              disabled={!qaMode}
+              className={`w-full rounded-xl py-3 font-bold ${
+                ignoreLock
+                  ? "bg-green-600 text-white"
+                  : "bg-zinc-700 text-white"
+              } disabled:opacity-40`}
+            >
+              Ignore Prediction Lock:{" "}
+              {ignoreLock ? "ON" : "OFF"}
+            </button>
 
-  </div>
+          </div>
 
-</div>
-<div className="mt-8 space-y-4">
+        </div>
+
+        <div className="mt-8 space-y-4">
 
           <button
             disabled
@@ -298,4 +329,3 @@ function fullReset() {
     </main>
   );
 }
-

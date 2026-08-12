@@ -9,11 +9,11 @@ class PSLApprovalService {
    * Approved PSL data becomes the source for the public
    * CSPredictor fixture system.
    */
-  approveImport(
+  async approveImport(
     importItem: PSLImport
-  ): Fixture {
+  ): Promise<Fixture> {
     const existingFixture =
-      fixtureRepository.getById(
+      await fixtureRepository.getById(
         importItem.id
       );
 
@@ -56,7 +56,7 @@ class PSLApprovalService {
 
     if (existingFixture) {
       const updated =
-        fixtureRepository.updateFixture(
+        await fixtureRepository.updateFixture(
           existingFixture.id,
           fixtureData
         );
@@ -117,7 +117,7 @@ class PSLApprovalService {
       published: true,
     };
 
-    return fixtureRepository.addFixture(
+    return await fixtureRepository.addFixture(
       newFixture
     );
   }

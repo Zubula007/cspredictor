@@ -24,19 +24,19 @@ export interface LeaderboardEntry {
 }
 
 class LeaderboardService {
-  getLeaderboard(
+  async getLeaderboard(
     competitionId?: string
-  ): LeaderboardEntry[] {
+  ): Promise<LeaderboardEntry[]> {
     console.log("🏆 Building leaderboard");
 
     const players =
-      playerRepository.getActivePlayers();
+      await playerRepository.getActivePlayers();
 
     let predictions =
-      predictionRepository.getAll();
+      await predictionRepository.getAll();
 
     const fixtures =
-      fixtureRepository.getAll();
+      await fixtureRepository.getAll();
 
     /*
       Filter predictions by active competition
@@ -77,7 +77,7 @@ class LeaderboardService {
       competitionId !== "BET";
 
     const bonuses =
-      bonusRepository.getAll();
+      await bonusRepository.getAll();
 
     const leaderboard =
       players.map((player) => {

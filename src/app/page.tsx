@@ -79,9 +79,7 @@ export default function Home() {
     useState(1);
 
   const fixtureRefs =
-    useRef<(HTMLDivElement | null)[]>(
-      []
-    );
+    useRef<(HTMLDivElement | null)[]>([]);
 
   /*
    * ============================================================
@@ -109,16 +107,6 @@ export default function Home() {
    * ============================================================
    * CURRENT ROUND FIXTURES
    * ============================================================
-   *
-   * IMPORTANT:
-   *
-   * We filter by:
-   *
-   * 1. Active competition
-   * 2. Admin-selected active round
-   *
-   * Therefore the home page will NEVER display
-   * all imported fixtures.
    */
 
   const competitionFixtures =
@@ -503,19 +491,35 @@ export default function Home() {
    * ============================================================
    * LEADERBOARD
    * ============================================================
+   *
+   * leaderboardService.getLeaderboard()
+   * is now async, so we must await the
+   * returned Promise before updating state.
    */
 
   useEffect(() => {
-    setLeaderboard(
-      leaderboardService.getLeaderboard(
-        activeCompetition.id
-      )
-    );
+    if (!mounted) {
+      return;
+    }
+
+    async function loadLeaderboard() {
+      const updatedLeaderboard =
+        await leaderboardService.getLeaderboard(
+          activeCompetition.id
+        );
+
+      setLeaderboard(
+        updatedLeaderboard
+      );
+    }
+
+    loadLeaderboard();
   }, [
     playerName,
     predictions,
     activeCompetition.id,
     submitted,
+    mounted,
   ]);
 
   /*

@@ -17,7 +17,7 @@ import competitionService from "../services/competitionService";
 type LeaderboardContextType = {
   leaderboard: LeaderboardEntry[];
 
-  refreshLeaderboard: () => void;
+  refreshLeaderboard: () => Promise<void>;
 
   competitionId: string;
 
@@ -41,15 +41,22 @@ export function LeaderboardProvider({
   const [leaderboard, setLeaderboard] =
     useState<LeaderboardEntry[]>([]);
 
-  function refreshLeaderboard() {
-    const updatedLeaderboard =
-      leaderboardService.getLeaderboard(
-        competitionId
+  async function refreshLeaderboard() {
+    try {
+      const updatedLeaderboard =
+        await leaderboardService.getLeaderboard(
+          competitionId
+        );
+
+      setLeaderboard(updatedLeaderboard);
+    } catch (error) {
+      console.error(
+        "Failed to refresh leaderboard:",
+        error
       );
 
-    setLeaderboard([
-      ...updatedLeaderboard,
-    ]);
+      setLeaderboard([]);
+    }
   }
 
   useEffect(() => {

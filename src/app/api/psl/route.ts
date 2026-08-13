@@ -5,11 +5,21 @@ import {
   type CompetitionId,
 } from "../../lib/enums";
 
+/*
+ * IMPORTANT
+ * ----------
+ * The PSL Match Centre currently returns the page shell but does not
+ * contain the fixture data in the server-rendered HTML.
+ *
+ * SuperSport exposes the current Betway Premiership fixture schedule
+ * server-side, so this API uses that page as the fixture source.
+ */
+
 const PSL_SOURCE_URL =
   "https://www.psl.co.za/tournament/betway-premiership";
 
-const PSL_MATCH_CENTRE_URL =
-  "https://www.psl.co.za/matchcentre?type=log&tournament=betway-premiership";
+const SUPERSPORT_FIXTURES_URL =
+  "https://supersport.com/football/tour/882fc52f-14b7-4e7c-a259-5ff5d18bde67/fixtures";
 
 const validCompetitionIds =
   Object.values(CompetitionIds) as CompetitionId[];
@@ -53,31 +63,153 @@ interface PSLSourceMatch {
   importType: "Fixture" | "Result";
 }
 
-const completedRoundCounts: Record<
+/*
+ * These are the current 2026/27 Betway Premiership teams
+ * shown by SuperSport.
+ *
+ * We deliberately use a controlled list so that navigation,
+ * sponsor text, stadium names, logos and other page content
+ * cannot accidentally become team names.
+ */
+const TEAM_NAMES = [
+  "Kaizer Chiefs",
+  "Orlando Pirates",
+  "Polokwane City",
+  "AmaZulu FC",
+  "Sekhukhune United",
+  "Siwelele",
+  "TS Galaxy",
+  "Chippa United",
+  "Golden Arrows",
+  "Mamelodi Sundowns",
+  "Marumo Gallants",
+  "Richards Bay",
+  "Durban City",
+  "Stellenbosch FC",
+  "Kruger United",
+  "Milford FC",
+] as const;
+
+type TeamName =
+  (typeof TEAM_NAMES)[number];
+
+/*
+ * Some sources occasionally use slightly different spellings.
+ * Keep the canonical CSPredictor names on output.
+ */
+const TEAM_ALIASES: Record<
   string,
-  number
+  TeamName
 > = {
-  "Mamelodi Sundowns": 0,
-  "Marumo Gallants": 0,
+  "kaizer chiefs":
+    "Kaizer Chiefs",
+
+  "orlando pirates":
+    "Orlando Pirates",
+
+  "polokwane city":
+    "Polokwane City",
+
+  "amazulu fc":
+    "AmaZulu FC",
+
+  amazulu:
+    "AmaZulu FC",
+
+  "sekhukhune united":
+    "Sekhukhune United",
+
+  siwelele:
+    "Siwelele",
+
+  "ts galaxy":
+    "TS Galaxy",
+
+  "chippa united":
+    "Chippa United",
+
+  "golden arrows":
+    "Golden Arrows",
+
+  "mamelodi sundowns":
+    "Mamelodi Sundowns",
+
+  "marumo gallants":
+    "Marumo Gallants",
+
+  "richards bay":
+    "Richards Bay",
+
+  "durban city":
+    "Durban City",
+
+  "stellenbosch fc":
+    "Stellenbosch FC",
+
+  "stellenbosch":
+    "Stellenbosch FC",
+
+  "kruger united":
+    "Kruger United",
+
+  "milford fc":
+    "Milford FC",
 };
 
-function decodeHtml(value: string): string {
+function normaliseWhitespace(
+  value: string
+): string {
   return value
-    .replace(/&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
-}
-
-function stripHtml(value: string): string {
-  return decodeHtml(
-    value
-      .replace(/<br\s*\/?>/gi, " ")
-      .replace(/<[^>]*>/g, " ")
-  )
+    .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeHtml(
+  value: string
+): string {
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#x2F;/gi, "/");
+}
+
+function stripHtml(
+  value: string
+): string {
+  return normaliseWhitespace(
+    decodeHtml(
+      value
+        .replace(
+          /<br\s*\/?>/gi,
+          " "
+        )
+        .replace(
+          /<[^>]*>/g,
+          " "
+        )
+    )
+  );
+}
+
+function canonicalTeamName(
+  value: string
+): TeamName | null {
+  const cleaned =
+    normaliseWhitespace(
+      value
+    ).toLowerCase();
+
+  return (
+    TEAM_ALIASES[cleaned] ??
+    null
+  );
 }
 
 function createStableSourceId(
@@ -96,232 +228,553 @@ function createStableSourceId(
   ]
     .join("-")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(
+      /[^a-z0-9]+/g,
+      "-"
+    )
+    .replace(
+      /^-+|-+$/g,
+      ""
+    );
 }
 
-function parseDate(value: string): string {
-  const parts = value.trim().split(/\s+/);
-
-  if (parts.length !== 3) {
-    throw new Error(
-      `Invalid PSL date: ${value}`
+function parseDateHeading(
+  value: string
+): {
+  isoDate: string;
+  displayDate: string;
+} | null {
+  const match =
+    value.match(
+      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/i
     );
+
+  if (!match) {
+    return null;
   }
 
-  const day = parts[0].padStart(2, "0");
-  const monthName =
-    parts[1].toLowerCase();
-  const year = parts[2];
+  const day =
+    match[2].padStart(
+      2,
+      "0"
+    );
 
-  const months: Record<string, string> = {
-    jan: "01",
-    feb: "02",
-    mar: "03",
-    apr: "04",
+  const monthName =
+    match[3].toLowerCase();
+
+  const year =
+    match[4];
+
+  const months: Record<
+    string,
+    string
+  > = {
+    january: "01",
+    february: "02",
+    march: "03",
+    april: "04",
     may: "05",
-    jun: "06",
-    jul: "07",
-    aug: "08",
-    sep: "09",
-    oct: "10",
-    nov: "11",
-    dec: "12",
+    june: "06",
+    july: "07",
+    august: "08",
+    september: "09",
+    october: "10",
+    november: "11",
+    december: "12",
   };
 
-  const month = months[monthName];
+  const month =
+    months[monthName];
 
   if (!month) {
-    throw new Error(
-      `Invalid PSL month: ${monthName}`
-    );
+    return null;
   }
 
-  return `${year}-${month}-${day}`;
+  return {
+    isoDate:
+      `${year}-${month}-${day}`,
+
+    displayDate:
+      `${match[2]} ${match[3]} ${year}`,
+  };
 }
 
-function getRound(
-  homeTeam: string,
-  awayTeam: string
+function parseDateFromText(
+  value: string
+): {
+  isoDate: string;
+  displayDate: string;
+} | null {
+  const match =
+    value.match(
+      /\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\b/i
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  const day =
+    match[1].padStart(
+      2,
+      "0"
+    );
+
+  const monthName =
+    match[2].toLowerCase();
+
+  const year =
+    match[3];
+
+  const months: Record<
+    string,
+    string
+  > = {
+    january: "01",
+    february: "02",
+    march: "03",
+    april: "04",
+    may: "05",
+    june: "06",
+    july: "07",
+    august: "08",
+    september: "09",
+    october: "10",
+    november: "11",
+    december: "12",
+  };
+
+  const month =
+    months[monthName];
+
+  if (!month) {
+    return null;
+  }
+
+  return {
+    isoDate:
+      `${year}-${month}-${day}`,
+
+    displayDate:
+      `${match[1]} ${match[2]} ${year}`,
+  };
+}
+
+/*
+ * The current SuperSport page exposes match links containing text
+ * similar to:
+ *
+ *   AmaZulu FC Orlando Pirates 17:30
+ *
+ * The venue is in a separate link immediately before it.
+ *
+ * We inspect <a> elements rather than relying on fragile CSS classes.
+ */
+interface MatchAnchor {
+  index: number;
+  text: string;
+}
+
+function extractAnchorTexts(
+  html: string
+): MatchAnchor[] {
+  const anchors: MatchAnchor[] = [];
+
+  const anchorRegex =
+    /<a\b[^>]*>([\s\S]*?)<\/a>/gi;
+
+  let match:
+    RegExpExecArray | null;
+
+  while (
+    (match =
+      anchorRegex.exec(html)) !==
+    null
+  ) {
+    anchors.push({
+      index: match.index,
+      text: stripHtml(
+        match[1]
+      ),
+    });
+  }
+
+  return anchors;
+}
+
+function findTeamsInText(
+  text: string
+): TeamName[] {
+  const found: Array<{
+    team: TeamName;
+    index: number;
+  }> = [];
+
+  const lower =
+    text.toLowerCase();
+
+  for (const [
+    alias,
+    canonical,
+  ] of Object.entries(
+    TEAM_ALIASES
+  )) {
+    let start = 0;
+
+    while (true) {
+      const index =
+        lower.indexOf(
+          alias,
+          start
+        );
+
+      if (index === -1) {
+        break;
+      }
+
+      found.push({
+        team: canonical,
+        index,
+      });
+
+      start =
+        index +
+        alias.length;
+    }
+  }
+
+  found.sort(
+    (a, b) =>
+      a.index - b.index
+  );
+
+  const unique: TeamName[] =
+    [];
+
+  for (const item of found) {
+    if (
+      !unique.includes(
+        item.team
+      )
+    ) {
+      unique.push(
+        item.team
+      );
+    }
+  }
+
+  return unique;
+}
+
+function calculateRound(
+  matchDate: string
 ): number {
-  const homeCount =
-    completedRoundCounts[homeTeam] ?? 0;
+  /*
+   * The 2026/27 Betway Premiership
+   * opened on 1 August 2026.
+   *
+   * This gives us a useful rolling round number
+   * without depending on a fragile page field.
+   */
+  const seasonStart =
+    new Date(
+      "2026-08-01T00:00:00+02:00"
+    );
 
-  const awayCount =
-    completedRoundCounts[awayTeam] ?? 0;
+  const date =
+    new Date(
+      `${matchDate}T00:00:00+02:00`
+    );
 
-  const round =
-    Math.max(
-      homeCount,
-      awayCount
-    ) + 1;
+  const difference =
+    date.getTime() -
+    seasonStart.getTime();
 
-  completedRoundCounts[homeTeam] =
-    round;
+  if (
+    Number.isNaN(
+      difference
+    ) ||
+    difference < 0
+  ) {
+    return 1;
+  }
 
-  completedRoundCounts[awayTeam] =
-    round;
+  return (
+    Math.floor(
+      difference /
+        (7 *
+          24 *
+          60 *
+          60 *
+          1000)
+    ) + 1
+  );
+}
 
-  return round;
+function isFutureFixture(
+  matchDate: string,
+  kickOff: string
+): boolean {
+  const value =
+    new Date(
+      `${matchDate}T${kickOff}:00+02:00`
+    );
+
+  if (
+    Number.isNaN(
+      value.getTime()
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    value.getTime() >
+    Date.now()
+  );
 }
 
 function extractFixtureMatches(
   html: string,
   competitionId: CompetitionId
 ): PSLSourceMatch[] {
-  const matchCentreIndex =
-    html.indexOf("Match Centre");
-
-  if (matchCentreIndex === -1) {
-    throw new Error(
-      "Could not locate the PSL Match Centre."
+  const anchors =
+    extractAnchorTexts(
+      html
     );
-  }
-
-  const loadMoreMatch =
-    html.match(/load\s+more/i);
-
-  const loadMoreIndex =
-    loadMoreMatch?.index ??
-    html.length;
-
-  const fixtureSection =
-    html.slice(
-      matchCentreIndex,
-      loadMoreIndex
-    );
-
-  const teamMatches = [
-    ...fixtureSection.matchAll(
-      /<h6\b[^>]*>([\s\S]*?)<\/h6>/gi
-    ),
-  ].map((match) =>
-    stripHtml(match[1])
-  );
-
-  const dateHeadings = [
-    ...fixtureSection.matchAll(
-      /\b(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\b/g
-    ),
-  ].map((match) => ({
-    value: match[1],
-    index: match.index ?? 0,
-  }));
-
-  const fixtureDetails = [
-    ...fixtureSection.matchAll(
-      /(\d{1,2}\s+[A-Za-z]{3})\s+(\d{1,2}:\d{2})\s+-/g
-    ),
-  ].map((match) => ({
-    date: match[1],
-    kickOff: match[2],
-    index: match.index ?? 0,
-  }));
 
   if (
-    teamMatches.length === 0 ||
-    fixtureDetails.length === 0
+    anchors.length === 0
   ) {
     throw new Error(
-      "No PSL fixtures could be parsed from the Match Centre."
+      "No SuperSport links could be parsed."
     );
   }
 
-  if (
-    teamMatches.length <
-    fixtureDetails.length * 2
+  /*
+   * Locate the date headings in the raw HTML.
+   *
+   * We keep their raw positions so that every match can be
+   * associated with the nearest preceding date.
+   */
+  const dateMatches: Array<{
+    index: number;
+    date: string;
+    displayDate: string;
+  }> = [];
+
+  const dateRegex =
+    /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}/gi;
+
+  let dateMatch:
+    RegExpExecArray | null;
+
+  while (
+    (dateMatch =
+      dateRegex.exec(html)) !==
+    null
   ) {
-    throw new Error(
-      "PSL fixture parser found fewer teams than fixtures."
-    );
-  }
-
-  const matches: PSLSourceMatch[] = [];
-
-  let dateHeadingIndex = 0;
-  let currentDisplayDate = "";
-
-  for (
-    let index = 0;
-    index < fixtureDetails.length;
-    index += 1
-  ) {
-    const detail =
-      fixtureDetails[index];
-
-    while (
-      dateHeadingIndex <
-        dateHeadings.length &&
-      dateHeadings[
-        dateHeadingIndex
-      ].index < detail.index
-    ) {
-      currentDisplayDate =
-        dateHeadings[
-          dateHeadingIndex
-        ].value;
-
-      dateHeadingIndex += 1;
-    }
-
-    if (!currentDisplayDate) {
-      throw new Error(
-        "Could not determine the date for a PSL fixture."
+    const parsed =
+      parseDateFromText(
+        dateMatch[0]
       );
-    }
 
-    const homeTeam =
-      teamMatches[index * 2];
-
-    const awayTeam =
-      teamMatches[index * 2 + 1];
-
-    if (!homeTeam || !awayTeam) {
+    if (!parsed) {
       continue;
     }
 
-    const matchDate =
-      parseDate(
-        currentDisplayDate
+    dateMatches.push({
+      index:
+        dateMatch.index,
+      date:
+        parsed.isoDate,
+      displayDate:
+        parsed.displayDate,
+    });
+  }
+
+  if (
+    dateMatches.length === 0
+  ) {
+    throw new Error(
+      "No SuperSport fixture dates could be parsed."
+    );
+  }
+
+  const matches: PSLSourceMatch[] =
+    [];
+
+  const seen = new Set<string>();
+
+  for (const anchor of anchors) {
+    /*
+     * A match anchor contains a kickoff time.
+     * This immediately eliminates most navigation/team links.
+     */
+    const timeMatch =
+      anchor.text.match(
+        /\b(\d{1,2}):(\d{2})\b/
       );
+
+    if (!timeMatch) {
+      continue;
+    }
+
+    const kickOff =
+      `${timeMatch[1].padStart(
+        2,
+        "0"
+      )}:${timeMatch[2]}`;
+
+    const teams =
+      findTeamsInText(
+        anchor.text
+      );
+
+    if (
+      teams.length !== 2
+    ) {
+      continue;
+    }
+
+    const homeTeam =
+      teams[0];
+
+    const awayTeam =
+      teams[1];
+
+    if (
+      homeTeam ===
+      awayTeam
+    ) {
+      continue;
+    }
+
+    /*
+     * Find the latest date heading before this anchor.
+     */
+    let currentDate:
+      | {
+          date: string;
+          displayDate: string;
+        }
+      | null = null;
+
+    for (
+      const date of dateMatches
+    ) {
+      if (
+        date.index <=
+        anchor.index
+      ) {
+        currentDate = {
+          date:
+            date.date,
+          displayDate:
+            date.displayDate,
+        };
+      } else {
+        break;
+      }
+    }
+
+    if (!currentDate) {
+      continue;
+    }
+
+    /*
+     * The SuperSport page also contains completed fixtures above
+     * the upcoming schedule. This import is specifically for
+     * fixtures, so only future matches are returned.
+     */
+    if (
+      !isFutureFixture(
+        currentDate.date,
+        kickOff
+      )
+    ) {
+      continue;
+    }
 
     const round =
-      getRound(
+      calculateRound(
+        currentDate.date
+      );
+
+    const id =
+      createStableSourceId(
+        competitionId,
+        round,
+        currentDate.date,
         homeTeam,
         awayTeam
       );
 
+    if (
+      seen.has(id)
+    ) {
+      continue;
+    }
+
+    seen.add(id);
+
     matches.push({
-      id: createStableSourceId(
-        competitionId,
-        round,
-        matchDate,
-        homeTeam,
-        awayTeam
-      ),
+      id,
 
       competitionId,
 
       round,
 
-      matchDate,
+      matchDate:
+        currentDate.date,
 
-      kickOff:
-        detail.kickOff,
+      kickOff,
 
       displayDate:
-        currentDisplayDate,
+        currentDate.displayDate,
 
       homeTeam,
 
       awayTeam,
 
-      status: "Scheduled",
+      status:
+        "Scheduled",
 
-      source: "PSL",
+      source:
+        "PSL",
 
-      importType: "Fixture",
+      importType:
+        "Fixture",
     });
+  }
+
+  /*
+   * Remove accidental duplicates and sort chronologically.
+   */
+  matches.sort(
+    (a, b) => {
+      const aTime =
+        new Date(
+          `${a.matchDate}T${a.kickOff}:00+02:00`
+        ).getTime();
+
+      const bTime =
+        new Date(
+          `${b.matchDate}T${b.kickOff}:00+02:00`
+        ).getTime();
+
+      return (
+        aTime - bTime
+      );
+    }
+  );
+
+  if (
+    matches.length === 0
+  ) {
+    throw new Error(
+      "No future Betway Premiership fixtures could be parsed from the SuperSport fixture page."
+    );
   }
 
   return matches;
@@ -331,8 +784,11 @@ export async function GET(
   request: Request
 ) {
   try {
-    const { searchParams } =
-      new URL(request.url);
+    const {
+      searchParams,
+    } = new URL(
+      request.url
+    );
 
     const competitionParam =
       searchParams.get(
@@ -376,27 +832,46 @@ export async function GET(
 
     const response =
       await fetch(
-        PSL_MATCH_CENTRE_URL,
+        SUPERSPORT_FIXTURES_URL,
         {
           method: "GET",
-          cache: "no-store",
+
+          cache:
+            "no-store",
+
           headers: {
             Accept:
               "text/html,application/xhtml+xml",
+
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36",
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+
+            "Accept-Language":
+              "en-ZA,en;q=0.9",
           },
         }
       );
 
-    if (!response.ok) {
+    if (
+      !response.ok
+    ) {
       throw new Error(
-        `PSL website request failed with status ${response.status}.`
+        `SuperSport fixture request failed with status ${response.status}.`
       );
     }
 
     const html =
       await response.text();
+
+    if (
+      !html ||
+      html.length <
+        1000
+    ) {
+      throw new Error(
+        "SuperSport returned an unexpectedly short response."
+      );
+    }
 
     const matches =
       extractFixtureMatches(
@@ -405,10 +880,25 @@ export async function GET(
       );
 
     return NextResponse.json({
-      source: "PSL",
+      source:
+        "PSL",
+
+      /*
+       * Keep the official PSL page here so the existing
+       * "Verify PSL website" UI continues to point to the
+       * official competition page.
+       */
       sourceUrl:
         PSL_SOURCE_URL,
+
+      /*
+       * Expose the actual data source as well.
+       */
+      dataSourceUrl:
+        SUPERSPORT_FIXTURES_URL,
+
       competitionId,
+
       matches,
     });
   } catch (error) {
@@ -422,7 +912,16 @@ export async function GET(
         error:
           error instanceof Error
             ? error.message
-            : "Failed to retrieve PSL information.",
+            : "Failed to retrieve Betway Premiership fixtures.",
+
+        source:
+          "PSL",
+
+        sourceUrl:
+          PSL_SOURCE_URL,
+
+        dataSourceUrl:
+          SUPERSPORT_FIXTURES_URL,
       },
       {
         status: 500,

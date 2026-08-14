@@ -8,47 +8,180 @@ import type { Player } from "../../types/player";
 
 export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  async function loadPlayers() {
-    setLoading(true);
-    setError("");
-
+  async function refreshPlayers() {
     try {
-      /*
-       * IMPORTANT:
-       * Admin player management now reads directly from
-       * Supabase so registrations made on another device
-       * appear here.
-       */
+      setError("");
+
       const supabasePlayers =
         await playerRepository.getAllFromSupabase();
 
       setPlayers(supabasePlayers);
     } catch (error) {
-      console.error(
-        "Unable to load players from Supabase:",
-        error
-      );
+      console.error("Unable to load players:", error);
 
       setError(
-        "Unable to load players from Supabase. Please try again."
+        error instanceof Error
+          ? error.message
+          : "Unable to load players."
       );
-
-      /*
-       * Keep local players as a fallback.
-       */
-      setPlayers(playerRepository.getAll());
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadPlayers();
+    void refreshPlayers();
   }, []);
+
+  async function approvePlayer(playerId: string) {
+    try {
+      setActionLoading(playerId);
+      setError("");
+
+      const approvedPlayer =
+        await playerRepository.approvePlayerInSupabase(
+          playerId
+        );
+
+      playerRepository.updatePlayer(
+        playerId,
+        approvedPlayer
+      );
+
+      await refreshPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to approve player:",
+        error
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Player approval failed. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function rejectPlayer(playerId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to reject this registration?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionLoading(playerId);
+      setError("");
+
+      const rejectedPlayer =
+        await playerRepository.rejectPlayerInSupabase(
+          playerId
+        );
+
+      playerRepository.updatePlayer(
+        playerId,
+        rejectedPlayer
+      );
+
+      await refreshPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to reject player:",
+        error
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Player rejection failed. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function togglePlayerStatus(
+    playerId: string,
+    currentStatus: boolean
+  ) {
+    try {
+      setActionLoading(playerId);
+      setError("");
+
+      const updatedPlayer =
+        await playerRepository.setPlayerActiveInSupabase(
+          playerId,
+          !currentStatus
+        );
+
+      playerRepository.updatePlayer(
+        playerId,
+        updatedPlayer
+      );
+
+      await refreshPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to update player status:",
+        error
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Player status update failed. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function deletePlayer(
+    playerId: string,
+    displayName: string
+  ) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${displayName}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionLoading(playerId);
+      setError("");
+
+      await playerRepository.deletePlayerFromSupabase(
+        playerId
+      );
+
+      await refreshPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to delete player:",
+        error
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Player deletion failed. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   const pendingPlayers = players.filter(
     (player) =>
@@ -83,159 +216,6 @@ export default function AdminPlayersPage() {
         .includes(search.toLowerCase())
   );
 
-  async function approvePlayer(playerId: string) {
-    try {
-      /*
-       * Update the local copy first.
-       */
-      playerRepository.approvePlayer(playerId);
-
-      /*
-       * Find the player currently loaded from Supabase.
-       */
-      const player = players.find(
-        (item) => item.id === playerId
-      );
-
-      if (!player) {
-        return;
-      }
-
-      /*
-       * Save approval to Supabase.
-       */
-      await playerRepository.syncPlayersToSupabase([
-        {
-          ...player,
-          active: true,
-          approvalStatus: "APPROVED",
-        },
-      ]);
-
-      /*
-       * Reload directly from Supabase.
-       */
-      await loadPlayers();
-    } catch (error) {
-      console.error(
-        "Unable to approve player:",
-        error
-      );
-
-      setError(
-        "Player approval failed. Please try again."
-      );
-    }
-  }
-
-  async function rejectPlayer(playerId: string) {
-    const confirmed = window.confirm(
-      "Are you sure you want to reject this registration?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const player = players.find(
-        (item) => item.id === playerId
-      );
-
-      if (!player) {
-        return;
-      }
-
-      await playerRepository.syncPlayersToSupabase([
-        {
-          ...player,
-          active: false,
-          approvalStatus: "REJECTED",
-        },
-      ]);
-
-      playerRepository.rejectPlayer(playerId);
-
-      await loadPlayers();
-    } catch (error) {
-      console.error(
-        "Unable to reject player:",
-        error
-      );
-
-      setError(
-        "Player rejection failed. Please try again."
-      );
-    }
-  }
-
-  async function togglePlayerStatus(
-    playerId: string,
-    currentStatus: boolean
-  ) {
-    try {
-      const player = players.find(
-        (item) => item.id === playerId
-      );
-
-      if (!player) {
-        return;
-      }
-
-      const updatedPlayer = {
-        ...player,
-        active: !currentStatus,
-      };
-
-      await playerRepository.syncPlayersToSupabase([
-        updatedPlayer,
-      ]);
-
-      playerRepository.updatePlayer(
-        playerId,
-        {
-          active: !currentStatus,
-        }
-      );
-
-      await loadPlayers();
-    } catch (error) {
-      console.error(
-        "Unable to change player status:",
-        error
-      );
-
-      setError(
-        "Unable to change player status. Please try again."
-      );
-    }
-  }
-
-  async function deletePlayer(
-    playerId: string,
-    displayName: string
-  ) {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${displayName}?`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    /*
-     * NOTE:
-     * The current repository does not yet have a
-     * Supabase delete method.
-     *
-     * Therefore we only delete the local copy for now.
-     * We will migrate player deletion separately.
-     */
-    playerRepository.deletePlayer(playerId);
-
-    await loadPlayers();
-  }
-
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
       <div className="mx-auto max-w-7xl">
@@ -254,25 +234,22 @@ export default function AdminPlayersPage() {
         {/* Loading */}
         {loading && (
           <div className="mt-8 rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
-            <p className="text-lg font-semibold text-yellow-400">
-              🔄 Loading players from Supabase...
+            <p className="font-semibold text-yellow-400">
+              Loading players from Supabase...
             </p>
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="mt-8 rounded-2xl border border-red-600 bg-red-900/20 p-5 text-center">
-            <p className="font-semibold text-red-400">
-              ⚠️ {error}
+          <div className="mt-8 rounded-2xl border border-red-600 bg-red-900/20 p-5">
+            <p className="font-bold text-red-400">
+              ⚠️ Player Management Error
             </p>
 
-            <button
-              onClick={loadPlayers}
-              className="mt-4 rounded-lg bg-yellow-400 px-5 py-2 font-bold text-black hover:bg-yellow-300"
-            >
-              🔄 Retry
-            </button>
+            <p className="mt-2 text-sm text-red-300">
+              {error}
+            </p>
           </div>
         )}
 
@@ -399,11 +376,9 @@ export default function AdminPlayersPage() {
 
                       <p className="mt-1 text-xs text-gray-500">
                         Registered:{" "}
-                        {player.joinedAt
-                          ? new Date(
-                              player.joinedAt
-                            ).toLocaleString("en-ZA")
-                          : "Unknown"}
+                        {new Date(
+                          player.joinedAt
+                        ).toLocaleString("en-ZA")}
                       </p>
 
                       <p className="mt-2 font-semibold text-yellow-400">
@@ -415,19 +390,27 @@ export default function AdminPlayersPage() {
                     <div className="flex flex-wrap gap-3">
 
                       <button
+                        disabled={
+                          actionLoading === player.id
+                        }
                         onClick={() =>
                           approvePlayer(player.id)
                         }
-                        className="rounded-lg bg-green-600 px-5 py-2 font-bold text-white transition hover:bg-green-500"
+                        className="rounded-lg bg-green-600 px-5 py-2 font-bold text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        ✅ Approve
+                        {actionLoading === player.id
+                          ? "⏳ Processing..."
+                          : "✅ Approve"}
                       </button>
 
                       <button
+                        disabled={
+                          actionLoading === player.id
+                        }
                         onClick={() =>
                           rejectPlayer(player.id)
                         }
-                        className="rounded-lg bg-red-600 px-5 py-2 font-bold text-white transition hover:bg-red-500"
+                        className="rounded-lg bg-red-600 px-5 py-2 font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         ❌ Reject
                       </button>
@@ -444,23 +427,24 @@ export default function AdminPlayersPage() {
         )}
 
         {/* No Pending Registrations */}
-        {!loading && pendingPlayers.length === 0 && (
-          <div className="mt-8 rounded-2xl border border-green-700 bg-green-900/10 p-6 text-center">
+        {!loading &&
+          pendingPlayers.length === 0 && (
+            <div className="mt-8 rounded-2xl border border-green-700 bg-green-900/10 p-6 text-center">
 
-            <p className="text-2xl">
-              ✅
-            </p>
+              <p className="text-2xl">
+                ✅
+              </p>
 
-            <h2 className="mt-2 text-xl font-bold text-green-400">
-              No Pending Registrations
-            </h2>
+              <h2 className="mt-2 text-xl font-bold text-green-400">
+                No Pending Registrations
+              </h2>
 
-            <p className="mt-1 text-sm text-gray-400">
-              All player registrations have been processed.
-            </p>
+              <p className="mt-1 text-sm text-gray-400">
+                All player registrations have been processed.
+              </p>
 
-          </div>
-        )}
+            </div>
+          )}
 
         {/* Registered Players */}
         <div className="mt-8 rounded-2xl border border-yellow-500 bg-zinc-900 p-6">
@@ -482,9 +466,7 @@ export default function AdminPlayersPage() {
               <span className="font-bold text-green-400">
                 {approvedPlayers.length}
               </span>
-
               {" • "}
-
               Inactive:{" "}
               <span className="font-bold text-red-400">
                 {inactivePlayers.length}
@@ -496,9 +478,7 @@ export default function AdminPlayersPage() {
           {filteredPlayers.length === 0 ? (
 
             <p className="py-10 text-center text-gray-400">
-              {loading
-                ? "Loading players..."
-                : "No players found."}
+              No players found.
             </p>
 
           ) : (
@@ -580,19 +560,27 @@ export default function AdminPlayersPage() {
 
                       <>
                         <button
+                          disabled={
+                            actionLoading === player.id
+                          }
                           onClick={() =>
                             approvePlayer(player.id)
                           }
-                          className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-500"
+                          className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-500 disabled:opacity-50"
                         >
-                          ✅ Approve
+                          {actionLoading === player.id
+                            ? "⏳..."
+                            : "✅ Approve"}
                         </button>
 
                         <button
+                          disabled={
+                            actionLoading === player.id
+                          }
                           onClick={() =>
                             rejectPlayer(player.id)
                           }
-                          className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500"
+                          className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
                         >
                           ❌ Reject
                         </button>
@@ -601,15 +589,20 @@ export default function AdminPlayersPage() {
                     ) : (
 
                       <button
+                        disabled={
+                          actionLoading === player.id
+                        }
                         onClick={() =>
                           togglePlayerStatus(
                             player.id,
                             player.active
                           )
                         }
-                        className="rounded-lg bg-yellow-600 px-4 py-2 font-semibold text-white transition hover:bg-yellow-500"
+                        className="rounded-lg bg-yellow-600 px-4 py-2 font-semibold text-white transition hover:bg-yellow-500 disabled:opacity-50"
                       >
-                        {player.active
+                        {actionLoading === player.id
+                          ? "⏳..."
+                          : player.active
                           ? "🚫 Deactivate"
                           : "✅ Activate"}
                       </button>
@@ -617,13 +610,16 @@ export default function AdminPlayersPage() {
                     )}
 
                     <button
+                      disabled={
+                        actionLoading === player.id
+                      }
                       onClick={() =>
                         deletePlayer(
                           player.id,
                           player.displayName
                         )
                       }
-                      className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500"
+                      className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
                     >
                       🗑 Delete
                     </button>
@@ -672,7 +668,6 @@ export default function AdminPlayersPage() {
                   >
 
                     <div>
-
                       <p className="font-bold text-white">
                         {player.displayName}
                       </p>
@@ -683,30 +678,37 @@ export default function AdminPlayersPage() {
                           {player.username}
                         </span>
                       </p>
-
                     </div>
 
                     <div className="flex gap-3">
 
                       <button
+                        disabled={
+                          actionLoading === player.id
+                        }
                         onClick={() =>
                           approvePlayer(
                             player.id
                           )
                         }
-                        className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-500"
+                        className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-500 disabled:opacity-50"
                       >
-                        ✅ Approve
+                        {actionLoading === player.id
+                          ? "⏳..."
+                          : "✅ Approve"}
                       </button>
 
                       <button
+                        disabled={
+                          actionLoading === player.id
+                        }
                         onClick={() =>
                           deletePlayer(
                             player.id,
                             player.displayName
                           )
                         }
-                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500"
+                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
                       >
                         🗑 Delete
                       </button>

@@ -38,8 +38,11 @@ class AuthService {
     }
 
     /*
-     * Check Supabase first for an existing username.
+     * ============================================================
+     * CHECK SUPABASE USERNAME
+     * ============================================================
      */
+
     try {
       const existingUsername =
         await playerRepository.getByUsernameFromSupabase(
@@ -58,27 +61,19 @@ class AuthService {
         error
       );
 
-      /*
-       * Continue with the local repository as fallback.
-       */
-    }
-
-    /*
-     * Check local repository for an existing username.
-     */
-    const localExistingUsername =
-      playerRepository.getByUsername(cleanUsername);
-
-    if (localExistingUsername) {
       return {
         success: false,
-        error: "That username is already registered.",
+        error:
+          "Unable to verify your username. Please try again.",
       };
     }
 
     /*
-     * Check Supabase for an existing display name.
+     * ============================================================
+     * CHECK SUPABASE DISPLAY NAME
+     * ============================================================
      */
+
     try {
       const existingDisplayName =
         await playerRepository.getByDisplayNameFromSupabase(
@@ -88,7 +83,8 @@ class AuthService {
       if (existingDisplayName) {
         return {
           success: false,
-          error: "That display name is already registered.",
+          error:
+            "That display name is already registered.",
         };
       }
     } catch (error) {
@@ -97,61 +93,87 @@ class AuthService {
         error
       );
 
-      /*
-       * Continue with the local repository as fallback.
-       */
-    }
-
-    /*
-     * Check local repository for an existing display name.
-     */
-    const localExistingDisplayName =
-      playerRepository.getByDisplayName(
-        cleanDisplayName
-      );
-
-    if (localExistingDisplayName) {
       return {
         success: false,
-        error: "That display name is already registered.",
+        error:
+          "Unable to verify your display name. Please try again.",
       };
     }
 
     /*
-     * New registrations always begin as PENDING.
+     * ============================================================
+     * CREATE PENDING PLAYER
+     * ============================================================
+     *
+     * Every new registration starts as:
+     *
+     * PENDING
+     * active = false
+     * isAdmin = false
      */
+
     const newPlayer: Player = {
       id: crypto.randomUUID(),
+
       displayName: cleanDisplayName,
+
       username: cleanUsername,
+
       passwordHash,
-      joinedAt: new Date().toISOString(),
+
+      joinedAt:
+        new Date().toISOString(),
+
       active: false,
+
       isAdmin: false,
+
       approvalStatus: "PENDING",
     };
 
     /*
-     * Save locally.
+     * ============================================================
+     * SAVE DIRECTLY TO SUPABASE
+     * ============================================================
      */
-    playerRepository.addPlayer(newPlayer);
 
-    /*
-     * Save to Supabase.
-     */
     try {
       await playerRepository.syncPlayersToSupabase([
         newPlayer,
       ]);
     } catch (error) {
       console.error(
-        "Unable to sync new player to Supabase:",
+        "Unable to save new player to Supabase:",
         error
       );
 
-      /*
-       * Local registration has already succeeded.
-       */
+      return {
+        success: false,
+        error:
+          "Registration could not be completed. Please try again.",
+      };
+    }
+
+    /*
+     * ============================================================
+     * OPTIONAL LOCAL CACHE
+     * ============================================================
+     *
+     * Keep the local repository updated for compatibility
+     * with existing parts of CSPredictor.
+     *
+     * Supabase remains the source of truth.
+     */
+
+    try {
+      playerRepository.addPlayer(
+        newPlayer
+      );
+    } catch (error) {
+      console.warn(
+        "Unable to update local player cache:",
+        error
+      );
     }
 
     return {
@@ -160,7 +182,13 @@ class AuthService {
     };
   }
 
-    async login(
+  /*
+   * ============================================================
+   * LOGIN
+   * ============================================================
+   */
+
+  async login(
     username: string,
     password: string
   ): Promise<{
@@ -168,33 +196,35 @@ class AuthService {
     player?: Player;
     error?: string;
   }> {
-    const cleanUsername = username.trim().toLowerCase();
+    const cleanUsername =
+      username.trim().toLowerCase();
 
     if (!cleanUsername) {
       return {
         success: false,
-        error: "Please enter your username.",
+        error:
+          "Please enter your username.",
       };
     }
 
     if (!password) {
       return {
         success: false,
-        error: "Please enter your password.",
+        error:
+          "Please enter your password.",
       };
     }
 
-        let supabasePlayer: Player | undefined;
-    const localPlayer =
-      playerRepository.getByUsername(
-        cleanUsername
-      );
-
     /*
-     * Get the player from Supabase.
+     * ============================================================
+     * GET PLAYER FROM SUPABASE
+     * ============================================================
      */
+
+    let player: Player | undefined;
+
     try {
-      supabasePlayer =
+      player =
         await playerRepository.getByUsernameFromSupabase(
           cleanUsername
         );
@@ -203,32 +233,20 @@ class AuthService {
         "Supabase login lookup failed:",
         error
       );
+
+      return {
+        success: false,
+        error:
+          "Unable to connect to the authentication service. Please try again.",
+      };
     }
 
     /*
-     * If either record exists, use it for password
-     * verification.
-     *
-     * Prefer the local approved/active record when
-     * the Supabase record has stale approval data.
+     * ============================================================
+     * USERNAME NOT FOUND
+     * ============================================================
      */
-    let player: Player | undefined;
 
-    if (
-      localPlayer &&
-      localPlayer.active &&
-      localPlayer.approvalStatus === "APPROVED"
-    ) {
-      player = localPlayer;
-    } else if (supabasePlayer) {
-      player = supabasePlayer;
-    } else {
-      player = localPlayer;
-    }
-
-    /*
-     * Username does not exist.
-     */
     if (!player) {
       return {
         success: false,
@@ -238,20 +256,14 @@ class AuthService {
     }
 
     /*
-     * Check the password against both records.
-     *
-     * This handles cases where the local and Supabase
-     * player records are temporarily different.
+     * ============================================================
+     * PASSWORD CHECK
+     * ============================================================
      */
-    const localPasswordMatches =
-      localPlayer?.passwordHash === password;
-
-    const supabasePasswordMatches =
-      supabasePlayer?.passwordHash === password;
 
     if (
-      !localPasswordMatches &&
-      !supabasePasswordMatches
+      player.passwordHash !==
+      password
     ) {
       return {
         success: false,
@@ -261,33 +273,14 @@ class AuthService {
     }
 
     /*
-     * If the local record has the correct password
-     * and is approved/active, use that record.
+     * ============================================================
+     * APPROVAL CHECK
+     * ============================================================
      */
-    if (
-      localPasswordMatches &&
-      localPlayer
-    ) {
-      player = localPlayer;
-    }
 
-    /*
-     * If the Supabase record has the correct password
-     * and the local record does not, use Supabase.
-     */
     if (
-      !localPasswordMatches &&
-      supabasePasswordMatches &&
-      supabasePlayer
-    ) {
-      player = supabasePlayer;
-    }
-
-    /*
-     * Approval check.
-     */
-    if (
-      player.approvalStatus === "PENDING"
+      player.approvalStatus ===
+      "PENDING"
     ) {
       return {
         success: false,
@@ -297,10 +290,14 @@ class AuthService {
     }
 
     /*
-     * Rejected account.
+     * ============================================================
+     * REJECTED ACCOUNT
+     * ============================================================
      */
+
     if (
-      player.approvalStatus === "REJECTED"
+      player.approvalStatus ===
+      "REJECTED"
     ) {
       return {
         success: false,
@@ -310,8 +307,11 @@ class AuthService {
     }
 
     /*
-     * Account must be active.
+     * ============================================================
+     * ACTIVE ACCOUNT CHECK
+     * ============================================================
      */
+
     if (!player.active) {
       return {
         success: false,
@@ -321,9 +321,15 @@ class AuthService {
     }
 
     /*
-     * Login successful.
+     * ============================================================
+     * LOGIN SUCCESS
+     * ============================================================
      */
-    if (typeof window !== "undefined") {
+
+    if (
+      typeof window !==
+      "undefined"
+    ) {
       localStorage.setItem(
         SESSION_KEY,
         JSON.stringify(player)
@@ -336,40 +342,89 @@ class AuthService {
     };
   }
 
+  /*
+   * ============================================================
+   * CURRENT PLAYER
+   * ============================================================
+   */
+
   getCurrentPlayer(): Player | null {
-    if (typeof window === "undefined") {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
       return null;
     }
 
     const saved =
-      localStorage.getItem(SESSION_KEY);
+      localStorage.getItem(
+        SESSION_KEY
+      );
 
     if (!saved) {
       return null;
     }
 
     try {
-      return JSON.parse(saved) as Player;
+      return JSON.parse(
+        saved
+      ) as Player;
     } catch {
-      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(
+        SESSION_KEY
+      );
+
       return null;
     }
   }
 
+  /*
+   * ============================================================
+   * LOGIN STATUS
+   * ============================================================
+   */
+
   isLoggedIn(): boolean {
-    return this.getCurrentPlayer() !== null;
+    return (
+      this.getCurrentPlayer() !==
+      null
+    );
   }
 
+  /*
+   * ============================================================
+   * LOGOUT
+   * ============================================================
+   */
+
   logout(): void {
-    if (typeof window === "undefined") {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
       return;
     }
 
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(
+      SESSION_KEY
+    );
   }
 
-  switchPlayer(player: Player): void {
-    if (typeof window === "undefined") {
+  /*
+   * ============================================================
+   * SWITCH PLAYER
+   * ============================================================
+   *
+   * Kept for existing QA/admin compatibility.
+   */
+
+  switchPlayer(
+    player: Player
+  ): void {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
       return;
     }
 
@@ -380,8 +435,7 @@ class AuthService {
   }
 }
 
-const authService = new AuthService();
+const authService =
+  new AuthService();
 
 export default authService;
-
-

@@ -1,16 +1,54 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import playerRepository from "../../repositories/playerRepository";
+import type { Player } from "../../types/player";
 
 export default function AdminPlayersPage() {
-  const [players, setPlayers] = useState(
-    playerRepository.getAll()
-  );
-
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+
+  async function loadPlayers() {
+    setLoading(true);
+    setError("");
+
+    try {
+      /*
+       * IMPORTANT:
+       * Admin player management now reads directly from
+       * Supabase so registrations made on another device
+       * appear here.
+       */
+      const supabasePlayers =
+        await playerRepository.getAllFromSupabase();
+
+      setPlayers(supabasePlayers);
+    } catch (error) {
+      console.error(
+        "Unable to load players from Supabase:",
+        error
+      );
+
+      setError(
+        "Unable to load players from Supabase. Please try again."
+      );
+
+      /*
+       * Keep local players as a fallback.
+       */
+      setPlayers(playerRepository.getAll());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPlayers();
+  }, []);
 
   const pendingPlayers = players.filter(
     (player) =>
@@ -45,17 +83,52 @@ export default function AdminPlayersPage() {
         .includes(search.toLowerCase())
   );
 
-  function refreshPlayers() {
-    setPlayers(playerRepository.getAll());
+  async function approvePlayer(playerId: string) {
+    try {
+      /*
+       * Update the local copy first.
+       */
+      playerRepository.approvePlayer(playerId);
+
+      /*
+       * Find the player currently loaded from Supabase.
+       */
+      const player = players.find(
+        (item) => item.id === playerId
+      );
+
+      if (!player) {
+        return;
+      }
+
+      /*
+       * Save approval to Supabase.
+       */
+      await playerRepository.syncPlayersToSupabase([
+        {
+          ...player,
+          active: true,
+          approvalStatus: "APPROVED",
+        },
+      ]);
+
+      /*
+       * Reload directly from Supabase.
+       */
+      await loadPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to approve player:",
+        error
+      );
+
+      setError(
+        "Player approval failed. Please try again."
+      );
+    }
   }
 
-  function approvePlayer(playerId: string) {
-    playerRepository.approvePlayer(playerId);
-
-    refreshPlayers();
-  }
-
-  function rejectPlayer(playerId: string) {
+  async function rejectPlayer(playerId: string) {
     const confirmed = window.confirm(
       "Are you sure you want to reject this registration?"
     );
@@ -64,26 +137,81 @@ export default function AdminPlayersPage() {
       return;
     }
 
-    playerRepository.rejectPlayer(playerId);
+    try {
+      const player = players.find(
+        (item) => item.id === playerId
+      );
 
-    refreshPlayers();
+      if (!player) {
+        return;
+      }
+
+      await playerRepository.syncPlayersToSupabase([
+        {
+          ...player,
+          active: false,
+          approvalStatus: "REJECTED",
+        },
+      ]);
+
+      playerRepository.rejectPlayer(playerId);
+
+      await loadPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to reject player:",
+        error
+      );
+
+      setError(
+        "Player rejection failed. Please try again."
+      );
+    }
   }
 
-  function togglePlayerStatus(
+  async function togglePlayerStatus(
     playerId: string,
     currentStatus: boolean
   ) {
-    playerRepository.updatePlayer(
-      playerId,
-      {
-        active: !currentStatus,
-      }
-    );
+    try {
+      const player = players.find(
+        (item) => item.id === playerId
+      );
 
-    refreshPlayers();
+      if (!player) {
+        return;
+      }
+
+      const updatedPlayer = {
+        ...player,
+        active: !currentStatus,
+      };
+
+      await playerRepository.syncPlayersToSupabase([
+        updatedPlayer,
+      ]);
+
+      playerRepository.updatePlayer(
+        playerId,
+        {
+          active: !currentStatus,
+        }
+      );
+
+      await loadPlayers();
+    } catch (error) {
+      console.error(
+        "Unable to change player status:",
+        error
+      );
+
+      setError(
+        "Unable to change player status. Please try again."
+      );
+    }
   }
 
-  function deletePlayer(
+  async function deletePlayer(
     playerId: string,
     displayName: string
   ) {
@@ -95,9 +223,17 @@ export default function AdminPlayersPage() {
       return;
     }
 
+    /*
+     * NOTE:
+     * The current repository does not yet have a
+     * Supabase delete method.
+     *
+     * Therefore we only delete the local copy for now.
+     * We will migrate player deletion separately.
+     */
     playerRepository.deletePlayer(playerId);
 
-    refreshPlayers();
+    await loadPlayers();
   }
 
   return (
@@ -115,10 +251,34 @@ export default function AdminPlayersPage() {
           </p>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="mt-8 rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
+            <p className="text-lg font-semibold text-yellow-400">
+              🔄 Loading players from Supabase...
+            </p>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="mt-8 rounded-2xl border border-red-600 bg-red-900/20 p-5 text-center">
+            <p className="font-semibold text-red-400">
+              ⚠️ {error}
+            </p>
+
+            <button
+              onClick={loadPlayers}
+              className="mt-4 rounded-lg bg-yellow-400 px-5 py-2 font-bold text-black hover:bg-yellow-300"
+            >
+              🔄 Retry
+            </button>
+          </div>
+        )}
+
         {/* Statistics */}
         <div className="mt-10 grid gap-4 md:grid-cols-4">
 
-          {/* Total */}
           <div className="rounded-2xl border border-yellow-500 bg-zinc-900 p-6 text-center">
             <p className="text-sm uppercase text-gray-400">
               Total Players
@@ -129,7 +289,6 @@ export default function AdminPlayersPage() {
             </p>
           </div>
 
-          {/* Pending */}
           <div className="rounded-2xl border border-yellow-500 bg-yellow-500/10 p-6 text-center">
             <p className="text-sm uppercase text-yellow-300">
               Pending Approval
@@ -140,7 +299,6 @@ export default function AdminPlayersPage() {
             </p>
           </div>
 
-          {/* Approved */}
           <div className="rounded-2xl border border-green-600 bg-green-900/20 p-6 text-center">
             <p className="text-sm uppercase text-green-300">
               Approved Players
@@ -151,7 +309,6 @@ export default function AdminPlayersPage() {
             </p>
           </div>
 
-          {/* Rejected */}
           <div className="rounded-2xl border border-red-600 bg-red-900/20 p-6 text-center">
             <p className="text-sm uppercase text-red-300">
               Rejected
@@ -242,9 +399,11 @@ export default function AdminPlayersPage() {
 
                       <p className="mt-1 text-xs text-gray-500">
                         Registered:{" "}
-                        {new Date(
-                          player.joinedAt
-                        ).toLocaleString("en-ZA")}
+                        {player.joinedAt
+                          ? new Date(
+                              player.joinedAt
+                            ).toLocaleString("en-ZA")
+                          : "Unknown"}
                       </p>
 
                       <p className="mt-2 font-semibold text-yellow-400">
@@ -285,7 +444,7 @@ export default function AdminPlayersPage() {
         )}
 
         {/* No Pending Registrations */}
-        {pendingPlayers.length === 0 && (
+        {!loading && pendingPlayers.length === 0 && (
           <div className="mt-8 rounded-2xl border border-green-700 bg-green-900/10 p-6 text-center">
 
             <p className="text-2xl">
@@ -323,7 +482,9 @@ export default function AdminPlayersPage() {
               <span className="font-bold text-green-400">
                 {approvedPlayers.length}
               </span>
+
               {" • "}
+
               Inactive:{" "}
               <span className="font-bold text-red-400">
                 {inactivePlayers.length}
@@ -335,7 +496,9 @@ export default function AdminPlayersPage() {
           {filteredPlayers.length === 0 ? (
 
             <p className="py-10 text-center text-gray-400">
-              No players found.
+              {loading
+                ? "Loading players..."
+                : "No players found."}
             </p>
 
           ) : (
@@ -349,7 +512,6 @@ export default function AdminPlayersPage() {
                   className="flex flex-col gap-4 rounded-xl border border-zinc-700 bg-black p-5 md:flex-row md:items-center md:justify-between"
                 >
 
-                  {/* Player Information */}
                   <div>
 
                     <h3 className="text-xl font-bold text-white">
@@ -367,7 +529,6 @@ export default function AdminPlayersPage() {
                       Player ID: {player.id}
                     </p>
 
-                    {/* Status */}
                     <div className="mt-3 flex flex-wrap gap-2">
 
                       {player.approvalStatus ===
@@ -405,7 +566,6 @@ export default function AdminPlayersPage() {
 
                   </div>
 
-                  {/* Actions */}
                   <div className="flex flex-wrap gap-3">
 
                     <Link
@@ -421,9 +581,7 @@ export default function AdminPlayersPage() {
                       <>
                         <button
                           onClick={() =>
-                            approvePlayer(
-                              player.id
-                            )
+                            approvePlayer(player.id)
                           }
                           className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-500"
                         >
@@ -432,9 +590,7 @@ export default function AdminPlayersPage() {
 
                         <button
                           onClick={() =>
-                            rejectPlayer(
-                              player.id
-                            )
+                            rejectPlayer(player.id)
                           }
                           className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500"
                         >
@@ -516,6 +672,7 @@ export default function AdminPlayersPage() {
                   >
 
                     <div>
+
                       <p className="font-bold text-white">
                         {player.displayName}
                       </p>
@@ -526,6 +683,7 @@ export default function AdminPlayersPage() {
                           {player.username}
                         </span>
                       </p>
+
                     </div>
 
                     <div className="flex gap-3">

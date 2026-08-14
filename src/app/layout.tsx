@@ -8,6 +8,7 @@ import { FixtureProvider } from "./context/FixtureContext";
 import { LeaderboardProvider } from "./context/LeaderboardContext";
 
 import Navbar from "./components/Navbar";
+import AuthGuard from "./components/AuthGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,8 +38,10 @@ export default function RootLayout({
         <CompetitionProvider>
           <FixtureProvider>
             <LeaderboardProvider>
-              <Navbar />
-              {children}
+              <AuthGuard>
+                <Navbar />
+                {children}
+              </AuthGuard>
             </LeaderboardProvider>
           </FixtureProvider>
         </CompetitionProvider>

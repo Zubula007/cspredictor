@@ -4,6 +4,24 @@ import { supabase } from "../lib/supabase";
 
 const STORAGE_KEY = "cspredictor-players";
 
+/*
+ * ============================================================
+ * LEGACY PLAYERS
+ * ============================================================
+ *
+ * These players already exist in CSPredictor and already have
+ * prediction / leaderboard history attached to their IDs.
+ *
+ * Registration must NEVER create a new ID for them.
+ */
+const LEGACY_PLAYER_IDS = new Set([
+  "P001",
+  "P002",
+  "P003",
+  "P004",
+  "P005",
+]);
+
 class PlayerRepository {
   private players: Player[];
 
@@ -38,7 +56,7 @@ class PlayerRepository {
     return [...players];
   }
 
-  private refreshPlayers() {
+  private refreshPlayers(): void {
     if (typeof window === "undefined") {
       return;
     }
@@ -46,7 +64,7 @@ class PlayerRepository {
     this.players = this.loadPlayers();
   }
 
-  private savePlayers() {
+  private savePlayers(): void {
     if (typeof window === "undefined") {
       return;
     }
@@ -360,6 +378,9 @@ class PlayerRepository {
   ): Promise<
     Player | undefined
   > {
+    const cleanDisplayName =
+      displayName.trim();
+
     const {
       data,
       error,
@@ -370,7 +391,7 @@ class PlayerRepository {
       )
       .ilike(
         "display_name",
-        displayName
+        cleanDisplayName
       )
       .maybeSingle();
 
@@ -394,6 +415,9 @@ class PlayerRepository {
   ): Promise<
     Player | undefined
   > {
+    const cleanUsername =
+      username.trim().toLowerCase();
+
     const {
       data,
       error,
@@ -404,7 +428,7 @@ class PlayerRepository {
       )
       .ilike(
         "username",
-        username
+        cleanUsername
       )
       .maybeSingle();
 
@@ -428,14 +452,338 @@ class PlayerRepository {
      ========================================================= */
 
   /**
-   * Creates a new player in Supabase.
+   * Register a player.
    *
-   * IMPORTANT:
+   * LEGACY PLAYER:
    *
-   * This is used by player registration only.
+   * If the display name belongs to one of the existing
+   * P001-P005 players, UPDATE that existing record.
    *
-   * Registration creates a new row using INSERT.
-   * Admin approval does NOT use this method.
+   * The existing ID is preserved.
+   *
+   * Existing prediction / leaderboard history therefore
+   * remains attached to the same player.
+   *
+   * The account becomes PENDING until Admin approval.
+   *
+   * NEW PLAYER:
+   *
+   * If there is no existing display name, a brand-new
+   * player is inserted using the supplied ID.
+   */
+
+  async registerPlayerToSupabase(
+    player: Player
+  ): Promise<Player> {
+    const cleanDisplayName =
+      player.displayName.trim();
+
+    const cleanUsername =
+      player.username
+        ?.trim()
+        .toLowerCase();
+
+    /*
+     * ---------------------------------------------------------
+     * CHECK FOR EXISTING DISPLAY NAME
+     * ---------------------------------------------------------
+     */
+
+    const existingPlayer =
+      await this.getByDisplayNameFromSupabase(
+        cleanDisplayName
+      );
+
+    /*
+     * ---------------------------------------------------------
+     * TEMPORARY DIAGNOSTIC
+     * ---------------------------------------------------------
+     *
+     * This confirms exactly what Supabase returned for the
+     * display name and whether the returned ID is recognised
+     * as a legacy CSPredictor player.
+     */
+
+    console.log(
+      "CSP LEGACY REGISTRATION CHECK:",
+      {
+        cleanDisplayName,
+
+        existingPlayerId:
+          existingPlayer?.id,
+
+        existingPlayerName:
+          existingPlayer?.displayName,
+
+        existingPlayerUsername:
+          existingPlayer?.username,
+
+        isLegacy:
+          existingPlayer
+            ? LEGACY_PLAYER_IDS.has(
+                existingPlayer.id
+              )
+            : false,
+      }
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * LEGACY PLAYER LINK
+     * ---------------------------------------------------------
+     */
+
+    if (
+      existingPlayer &&
+      LEGACY_PLAYER_IDS.has(
+        existingPlayer.id
+      )
+    ) {
+      console.log(
+        "CSP LEGACY PLAYER MATCH FOUND:",
+        existingPlayer.id
+      );
+
+      /*
+       * IMPORTANT:
+       *
+       * Preserve:
+       * - existing ID
+       * - existing joinedAt
+       * - existing isAdmin
+       * - existing prediction history
+       * - existing leaderboard history
+       *
+       * Only authentication / registration fields change.
+       */
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("players")
+        .update({
+          username:
+            cleanUsername ??
+            null,
+
+          password_hash:
+            player.passwordHash ??
+            null,
+
+          active: false,
+
+          approval_status:
+            "PENDING",
+        })
+        .eq(
+          "id",
+          existingPlayer.id
+        )
+        .select(
+          this.playerSelect
+        )
+        .single();
+
+      if (error) {
+        console.error(
+          "Supabase legacy player linking error:",
+          error
+        );
+
+        throw new Error(
+          `Unable to link legacy player: ${error.message}`
+        );
+      }
+
+      if (!data) {
+        throw new Error(
+          "Legacy player linking returned no player."
+        );
+      }
+
+      const linkedPlayer =
+        this.mapSupabasePlayer(
+          data
+        );
+
+      /*
+       * Update local compatibility cache
+       * using the ORIGINAL legacy ID.
+       */
+
+      this.updatePlayer(
+        existingPlayer.id,
+        linkedPlayer
+      );
+
+      console.log(
+        "CSP LEGACY PLAYER LINKED SUCCESSFULLY:",
+        {
+          id:
+            linkedPlayer.id,
+
+          displayName:
+            linkedPlayer.displayName,
+
+          username:
+            linkedPlayer.username,
+
+          active:
+            linkedPlayer.active,
+
+          approvalStatus:
+            linkedPlayer.approvalStatus,
+        }
+      );
+
+      return linkedPlayer;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * EXISTING NON-LEGACY DISPLAY NAME
+     * ---------------------------------------------------------
+     *
+     * We do not allow a new registration to take over
+     * another existing player's display name.
+     */
+
+    if (existingPlayer) {
+      console.error(
+        "CSP NON-LEGACY DISPLAY NAME CONFLICT:",
+        {
+          id:
+            existingPlayer.id,
+
+          displayName:
+            existingPlayer.displayName,
+
+          expectedLegacyIds:
+            Array.from(
+              LEGACY_PLAYER_IDS
+            ),
+        }
+      );
+
+      throw new Error(
+        "That display name is already registered. Please choose another display name."
+      );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * NEW PLAYER
+     * ---------------------------------------------------------
+     */
+
+    const newPlayer: Player = {
+      ...player,
+
+      username:
+        cleanUsername,
+
+      active: false,
+
+      isAdmin: false,
+
+      approvalStatus:
+        "PENDING",
+    };
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("players")
+      .insert({
+        id: newPlayer.id,
+
+        display_name:
+          newPlayer.displayName,
+
+        joined_at:
+          newPlayer.joinedAt ||
+          null,
+
+        active: false,
+
+        is_admin: false,
+
+        username:
+          newPlayer.username ??
+          null,
+
+        approval_status:
+          "PENDING",
+
+        password_hash:
+          newPlayer.passwordHash ??
+          null,
+      })
+      .select(
+        this.playerSelect
+      )
+      .single();
+
+    if (error) {
+      console.error(
+        "Supabase new player registration error:",
+        error
+      );
+
+      throw new Error(
+        `Unable to register new player: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      throw new Error(
+        "New player registration returned no player."
+      );
+    }
+
+    const registeredPlayer =
+      this.mapSupabasePlayer(
+        data
+      );
+
+    /*
+     * Keep local cache compatible.
+     */
+
+    try {
+      const existingLocal =
+        this.getById(
+          registeredPlayer.id
+        );
+
+      if (existingLocal) {
+        this.updatePlayer(
+          registeredPlayer.id,
+          registeredPlayer
+        );
+      } else {
+        this.addPlayer(
+          registeredPlayer
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "Unable to update local player cache:",
+        error
+      );
+    }
+
+    return registeredPlayer;
+  }
+
+  /**
+   * Existing compatibility method.
+   *
+   * This remains available for existing code.
+   *
+   * It performs INSERT only.
    */
 
   async syncPlayersToSupabase(
@@ -505,12 +853,7 @@ class PlayerRepository {
   /**
    * Approve player.
    *
-   * IMPORTANT:
    * Uses UPDATE, NOT UPSERT.
-   *
-   * This avoids the INSERT RLS policy that caused
-   * the previous "new row violates row-level security"
-   * error.
    */
 
   async approvePlayerInSupabase(

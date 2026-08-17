@@ -1,64 +1,174 @@
-import fixtureRepository from "../repositories/fixtureRepository";
+import { supabase } from "../lib/supabase";
 
-import { CompetitionIds } from "../lib/enums";
+export interface CompetitionRecord {
+  id: string;
+  name: string;
+  activeRound: number;
+}
 
-class CompetitionService {
-  async getActiveCompetition(): Promise<string> {
-    const fixtures =
-      await fixtureRepository.getAll();
+class CompetitionRepository {
+  /*
+   * ============================================================
+   * GET ALL COMPETITIONS
+   * ============================================================
+   */
 
-    const now = new Date();
-
-    // Upcoming fixtures
-    const upcoming = fixtures
-      .filter((fixture) => {
-        const kickoff = new Date(
-          `${fixture.matchDate}T${fixture.kickOff}:00`
-        );
-
-        return kickoff >= now;
-      })
-      .sort((a, b) => {
-        const aDate = new Date(
-          `${a.matchDate}T${a.kickOff}:00`
-        ).getTime();
-
-        const bDate = new Date(
-          `${b.matchDate}T${b.kickOff}:00`
-        ).getTime();
-
-        return aDate - bDate;
+  async getAll(): Promise<CompetitionRecord[]> {
+    const { data, error } = await supabase
+      .from("competitions")
+      .select(
+        "id, name, active_round"
+      )
+      .order("id", {
+        ascending: true,
       });
 
-    if (upcoming.length > 0) {
-      return upcoming[0].competitionId;
+    if (error) {
+      throw new Error(
+        `Unable to load competitions from Supabase: ${error.message}`
+      );
     }
 
-    // No upcoming fixtures -> latest competition played
-    const completed = [...fixtures].sort(
-      (a, b) => {
-        const aDate = new Date(
-          `${a.matchDate}T${a.kickOff}:00`
-        ).getTime();
+    return (data ?? []).map(
+      (row) => ({
+        id: String(row.id),
 
-        const bDate = new Date(
-          `${b.matchDate}T${b.kickOff}:00`
-        ).getTime();
+        name: String(row.name),
 
-        return bDate - aDate;
-      }
+        activeRound:
+          Number(row.active_round) > 0
+            ? Number(row.active_round)
+            : 1,
+      })
     );
+  }
 
-    if (completed.length > 0) {
-      return completed[0].competitionId;
+  /*
+   * ============================================================
+   * GET COMPETITION
+   * ============================================================
+   */
+
+  async getById(
+    competitionId: string
+  ): Promise<CompetitionRecord | undefined> {
+    const { data, error } = await supabase
+      .from("competitions")
+      .select(
+        "id, name, active_round"
+      )
+      .eq("id", competitionId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Unable to load competition from Supabase: ${error.message}`
+      );
     }
 
-    // Default
-    return CompetitionIds.BET;
+    if (!data) {
+      return undefined;
+    }
+
+    return {
+      id: String(data.id),
+
+      name: String(data.name),
+
+      activeRound:
+        Number(data.active_round) > 0
+          ? Number(data.active_round)
+          : 1,
+    };
+  }
+
+  /*
+   * ============================================================
+   * GET ACTIVE ROUND
+   * ============================================================
+   *
+   * Supabase competitions.active_round
+   * is the single source of truth.
+   */
+
+  async getActiveRound(
+    competitionId: string
+  ): Promise<number> {
+    const competition =
+      await this.getById(
+        competitionId
+      );
+
+    if (!competition) {
+      return 1;
+    }
+
+    return competition.activeRound;
+  }
+
+  /*
+   * ============================================================
+   * SET ACTIVE ROUND
+   * ============================================================
+   *
+   * Admin changes the active round here.
+   *
+   * The value is saved to Supabase so that
+   * every user sees the same active round.
+   */
+
+  async setActiveRound(
+    competitionId: string,
+    round: number
+  ): Promise<number> {
+    if (
+      !Number.isInteger(round) ||
+      round < 1
+    ) {
+      return this.getActiveRound(
+        competitionId
+      );
+    }
+
+    const { data, error } =
+      await supabase
+        .from("competitions")
+        .update({
+          active_round: round,
+        })
+        .eq("id", competitionId)
+        .select(
+          "id, name, active_round"
+        )
+        .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Unable to save active round to Supabase: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      return this.getActiveRound(
+        competitionId
+      );
+    }
+
+    const savedRound =
+      Number(data.active_round);
+
+    if (
+      Number.isInteger(savedRound) &&
+      savedRound > 0
+    ) {
+      return savedRound;
+    }
+
+    return round;
   }
 }
 
-const competitionService =
-  new CompetitionService();
+const competitionRepository =
+  new CompetitionRepository();
 
-export default competitionService;
+export default competitionRepository;

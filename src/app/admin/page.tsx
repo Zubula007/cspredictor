@@ -57,10 +57,14 @@ const adminCards = [
 ];
 
 export default function AdminDashboardPage() {
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] =
+    useState(false);
 
   const [activeRound, setActiveRound] =
     useState(1);
+
+  const [savingRound, setSavingRound] =
+    useState(false);
 
   const players =
     playerRepository.getActivePlayers();
@@ -81,29 +85,47 @@ export default function AdminDashboardPage() {
   }, []);
 
   /*
-   * Load the active round whenever
-   * the active competition changes.
+   * ============================================================
+   * LOAD GLOBAL ACTIVE ROUND
+   * ============================================================
+   *
+   * The active round now comes from Supabase.
    */
+
   useEffect(() => {
     if (!mounted) {
       return;
     }
 
-    const round =
-      competitionService.getActiveRound(
-        activeCompetition.id
-      );
+    let cancelled = false;
 
-    setActiveRound(round);
+    async function loadActiveRound() {
+      const round =
+        await competitionService.getActiveRound(
+          activeCompetition.id
+        );
+
+      if (!cancelled) {
+        setActiveRound(round);
+      }
+    }
+
+    loadActiveRound();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     activeCompetition.id,
     mounted,
   ]);
 
   /*
-   * Fixtures belonging to the
-   * selected competition.
+   * ============================================================
+   * COMPETITION FIXTURES
+   * ============================================================
    */
+
   const competitionFixtures =
     fixtures.filter(
       (fixture) =>
@@ -112,9 +134,11 @@ export default function AdminDashboardPage() {
     );
 
   /*
-   * Find available rounds for the
-   * selected competition.
+   * ============================================================
+   * AVAILABLE ROUNDS
+   * ============================================================
    */
+
   const availableRounds =
     Array.from(
       new Set(
@@ -132,14 +156,16 @@ export default function AdminDashboardPage() {
       (a, b) => a - b
     );
 
-  /*
-   * Default to Round 1 if no
-   * fixtures have been imported.
-   */
   const rounds =
     availableRounds.length > 0
       ? availableRounds
       : [1];
+
+  /*
+   * ============================================================
+   * STATISTICS
+   * ============================================================
+   */
 
   const pendingResults =
     fixtures.filter(
@@ -159,6 +185,12 @@ export default function AdminDashboardPage() {
           activeCompetition.id
     ).length;
 
+  /*
+   * ============================================================
+   * COMPETITION CHANGE
+   * ============================================================
+   */
+
   const handleCompetitionChange = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
@@ -167,30 +199,52 @@ export default function AdminDashboardPage() {
     );
   };
 
-  const handleRoundChange = (
+  /*
+   * ============================================================
+   * ACTIVE ROUND CHANGE
+   * ============================================================
+   *
+   * Save globally to Supabase.
+   */
+
+  const handleRoundChange = async (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const round = Number(
       event.target.value
     );
 
-    /*
-     * IMPORTANT:
-     * Competition ID first.
-     * Round second.
-     */
-    const savedRound =
-      competitionService.setActiveRound(
-        activeCompetition.id,
-        round
-      );
+    if (
+      !Number.isInteger(round) ||
+      round < 1
+    ) {
+      return;
+    }
 
-    setActiveRound(savedRound);
+    setSavingRound(true);
+
+    try {
+      const savedRound =
+        await competitionService.setActiveRound(
+          activeCompetition.id,
+          round
+        );
+
+      setActiveRound(savedRound);
+    } finally {
+      setSavingRound(false);
+    }
   };
 
   if (!mounted) {
     return null;
   }
+
+  /*
+   * ============================================================
+   * ACTIVE ROUND FIXTURES
+   * ============================================================
+   */
 
   const activeRoundFixtures =
     competitionFixtures.filter(
@@ -222,7 +276,7 @@ export default function AdminDashboardPage() {
             🏆 Active Competition
           </h2>
 
-          {/* Competition Selector */}
+          {/* COMPETITION SELECTOR */}
 
           <div className="mx-auto mt-5 max-w-md">
             <label
@@ -272,7 +326,8 @@ export default function AdminDashboardPage() {
               id="admin-round-selector"
               value={activeRound}
               onChange={handleRoundChange}
-              className="w-full rounded-xl border-2 border-yellow-500 bg-black px-4 py-3 text-center text-lg font-bold text-yellow-400 outline-none transition focus:border-yellow-300 focus:ring-2 focus:ring-yellow-500/30"
+              disabled={savingRound}
+              className="w-full rounded-xl border-2 border-yellow-500 bg-black px-4 py-3 text-center text-lg font-bold text-yellow-400 outline-none transition focus:border-yellow-300 focus:ring-2 focus:ring-yellow-500/30 disabled:cursor-wait disabled:opacity-60"
             >
               {rounds.map(
                 (round) => (
@@ -288,8 +343,9 @@ export default function AdminDashboardPage() {
             </select>
 
             <p className="mt-3 text-center text-sm text-gray-400">
-              The home page will display only
-              this round.
+              {savingRound
+                ? "Saving active round..."
+                : "This round is shared globally with all players."}
             </p>
           </div>
 

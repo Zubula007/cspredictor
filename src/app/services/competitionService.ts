@@ -1,4 +1,5 @@
 import { CompetitionIds } from "../lib/enums";
+import competitionRepository from "./competitionRepository";
 
 export interface CompetitionInfo {
   id: string;
@@ -8,7 +9,10 @@ export interface CompetitionInfo {
   monthlyWinnerEnabled: boolean;
 }
 
-const COMPETITIONS: Record<string, CompetitionInfo> = {
+const COMPETITIONS: Record<
+  string,
+  CompetitionInfo
+> = {
   [CompetitionIds.BET]: {
     id: CompetitionIds.BET,
     name: "Betway Premiership",
@@ -45,26 +49,48 @@ const COMPETITIONS: Record<string, CompetitionInfo> = {
 const ACTIVE_COMPETITION_KEY =
   "csp-active-competition";
 
-const ACTIVE_ROUND_KEY =
-  "csp-active-round";
-
 class CompetitionService {
+  /*
+   * ============================================================
+   * COMPETITIONS
+   * ============================================================
+   */
+
+  getCompetition(
+    id: string
+  ): CompetitionInfo {
+    return (
+      COMPETITIONS[id] ??
+      COMPETITIONS[CompetitionIds.BET]
+    );
+  }
+
+  getAllCompetitions(): CompetitionInfo[] {
+    return Object.values(
+      COMPETITIONS
+    );
+  }
+
   getActiveCompetition(): CompetitionInfo {
-    if (typeof window !== "undefined") {
-      const savedCompetition =
+    if (
+      typeof window !== "undefined"
+    ) {
+      const saved =
         localStorage.getItem(
           ACTIVE_COMPETITION_KEY
         );
 
       if (
-        savedCompetition &&
-        COMPETITIONS[savedCompetition]
+        saved &&
+        COMPETITIONS[saved]
       ) {
-        return COMPETITIONS[savedCompetition];
+        return COMPETITIONS[saved];
       }
     }
 
-    return COMPETITIONS[CompetitionIds.BET];
+    return COMPETITIONS[
+      CompetitionIds.BET
+    ];
   }
 
   setActiveCompetition(
@@ -77,7 +103,9 @@ class CompetitionService {
       return this.getActiveCompetition();
     }
 
-    if (typeof window !== "undefined") {
+    if (
+      typeof window !== "undefined"
+    ) {
       localStorage.setItem(
         ACTIVE_COMPETITION_KEY,
         competitionId
@@ -87,81 +115,36 @@ class CompetitionService {
     return competition;
   }
 
-  getCompetition(
-    id: string
-  ): CompetitionInfo {
-    return COMPETITIONS[id];
-  }
-
-  getAllCompetitions(): CompetitionInfo[] {
-    return Object.values(COMPETITIONS);
-  }
-
   /*
    * ============================================================
    * ACTIVE ROUND
    * ============================================================
    *
-   * The active round belongs to a competition.
+   * Active round is controlled centrally by
+   * the Supabase competitions table.
    *
-   * Round 1 is used automatically until Admin
-   * selects another round.
+   * competitions.active_round is the
+   * single source of truth.
    */
 
-  getActiveRound(
+  async getActiveRound(
     competitionId: string | number
-  ): number {
-    const key =
-      `${ACTIVE_ROUND_KEY}-${String(
-        competitionId
-      )}`;
-
-    if (typeof window !== "undefined") {
-      const savedRound =
-        localStorage.getItem(key);
-
-      if (savedRound !== null) {
-        const round =
-          Number(savedRound);
-
-        if (
-          Number.isInteger(round) &&
-          round > 0
-        ) {
-          return round;
-        }
-      }
-    }
-
-    return 1;
+  ): Promise<number> {
+    return competitionRepository
+      .getActiveRound(
+        String(competitionId)
+      );
   }
 
-  setActiveRound(
+  async setActiveRound(
     competitionId: string | number,
     round: number
-  ): number {
-    if (
-      !Number.isInteger(round) ||
-      round < 1
-    ) {
-      return this.getActiveRound(
-        competitionId
+  ): Promise<number> {
+    return competitionRepository
+      .setActiveRound(
+        String(competitionId),
+        round
       );
-    }
-
-    const key =
-      `${ACTIVE_ROUND_KEY}-${String(
-        competitionId
-      )}`;
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        key,
-        String(round)
-      );
-    }
-
-    return round;
   }
 }
 

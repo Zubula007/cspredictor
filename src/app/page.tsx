@@ -16,8 +16,6 @@ import leaderboardService, {
   type LeaderboardEntry,
 } from "./services/leaderboardService";
 
-import competitionService from "./services/competitionService";
-
 import authService from "./services/authService";
 import { isFixtureLocked } from "./lib/predictionLock";
 
@@ -40,10 +38,30 @@ const UI_PREDICTIONS_KEY =
   "csp-ui-predictions";
 
 export default function Home() {
-  const { activeCompetition } =
-    useCompetition();
+  /*
+   * ============================================================
+   * CONTEXT
+   * ============================================================
+   *
+   * IMPORTANT:
+   * activeRound now comes directly from CompetitionContext.
+   *
+   * Home no longer maintains its own activeRound state.
+   * This prevents Admin and Home from using different rounds.
+   */
+
+  const {
+    activeCompetition,
+    activeRound,
+  } = useCompetition();
 
   const { fixtures } = useFixtures();
+
+  /*
+   * ============================================================
+   * STATE
+   * ============================================================
+   */
 
   const [playerName, setPlayerName] =
     useState("");
@@ -75,9 +93,6 @@ export default function Home() {
   const [mounted, setMounted] =
     useState(false);
 
-  const [activeRound, setActiveRound] =
-    useState(1);
-
   const [predictions, setPredictions] =
     useState<UIPrediction[]>([]);
 
@@ -86,30 +101,11 @@ export default function Home() {
 
   /*
    * ============================================================
-   * ACTIVE ROUND
-   * ============================================================
-   */
-
-  useEffect(() => {
-    if (!mounted) {
-      return;
-    }
-
-    const round =
-      competitionService.getActiveRound(
-        activeCompetition.id
-      );
-
-    setActiveRound(round);
-  }, [
-    activeCompetition.id,
-    mounted,
-  ]);
-
-  /*
-   * ============================================================
    * CURRENT ROUND FIXTURES
    * ============================================================
+   *
+   * Competition + active round determine exactly which
+   * fixtures appear on the Home page.
    */
 
   const competitionFixtures =
@@ -121,8 +117,9 @@ export default function Home() {
     );
 
   /*
-   * A stable key prevents the prediction-loading
-   * effect from running on every render.
+   * Stable fixture key.
+   *
+   * Prevents prediction loading from firing on every render.
    */
 
   const fixtureKey =
@@ -135,14 +132,10 @@ export default function Home() {
    * LOAD PLAYER PREDICTIONS
    * ============================================================
    *
-   * IMPORTANT:
-   * predictionService.getPlayerPredictions()
-   * is asynchronous after the Supabase migration.
+   * Predictions are loaded from Supabase through
+   * predictionService.
    *
-   * We therefore ALWAYS await it inside an effect.
-   *
-   * Predictions are matched by fixture ID rather than
-   * array position.
+   * They are matched by fixture ID, NOT array position.
    */
 
   useEffect(() => {
@@ -155,8 +148,8 @@ export default function Home() {
         authService.getCurrentPlayer();
 
       /*
-       * Start with blank predictions for every
-       * fixture in the current round.
+       * Always start with blank predictions for
+       * every fixture in the active round.
        */
 
       const blankPredictions: UIPrediction[] =
@@ -179,8 +172,7 @@ export default function Home() {
         );
 
       /*
-       * If nobody is logged in, show blank
-       * predictions.
+       * No logged-in player.
        */
 
       if (!player) {
@@ -193,10 +185,9 @@ export default function Home() {
 
       try {
         /*
-         * THIS IS THE IMPORTANT FIX.
-         *
-         * Await the asynchronous prediction
-         * repository/service call.
+         * IMPORTANT:
+         * This is asynchronous after the
+         * Supabase migration.
          */
 
         const savedPredictions =
@@ -206,9 +197,6 @@ export default function Home() {
 
         /*
          * Restore predictions by fixture ID.
-         *
-         * This prevents a submitted 2-1 prediction
-         * from displaying as 0-0.
          */
 
         const restoredPredictions =
@@ -284,7 +272,7 @@ export default function Home() {
         );
 
         /*
-         * Keep local UI storage in sync as well.
+         * Keep local UI storage in sync.
          */
 
         localStorage.setItem(
@@ -300,8 +288,7 @@ export default function Home() {
         );
 
         /*
-         * Fall back to local UI predictions
-         * if the database request fails.
+         * Database failure fallback.
          */
 
         const savedLocal =
@@ -468,10 +455,7 @@ export default function Home() {
 
     try {
       /*
-       * Save each prediction.
-       *
-       * await is safe whether the service currently
-       * returns void or Promise<void>.
+       * Save every completed prediction.
        */
 
       for (
@@ -520,7 +504,7 @@ export default function Home() {
       }
 
       /*
-       * Save the UI representation too.
+       * Save UI representation.
        */
 
       localStorage.setItem(
@@ -564,7 +548,7 @@ export default function Home() {
       setShowConfirmation(false);
 
       /*
-       * Refresh leaderboard after submission.
+       * Refresh leaderboard.
        */
 
       const updatedLeaderboard =
@@ -677,9 +661,8 @@ export default function Home() {
     }
 
     /*
-     * Local predictions are only used as a
-     * temporary fallback. Database predictions
-     * are loaded by the async effect above.
+     * Local predictions are only a fallback.
+     * Database predictions are loaded separately.
      */
 
     if (savedPredictions) {
@@ -838,6 +821,8 @@ export default function Home() {
 
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
 
+            {/* LEAGUE CODE */}
+
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
               <p className="text-xs uppercase text-gray-400">
                 League Code
@@ -847,6 +832,8 @@ export default function Home() {
                 CSP26
               </p>
             </div>
+
+            {/* COMPETITION */}
 
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
@@ -872,6 +859,8 @@ export default function Home() {
 
             </div>
 
+            {/* ROUND */}
+
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
               <p className="text-xs uppercase text-gray-400">
@@ -883,6 +872,8 @@ export default function Home() {
               </p>
 
             </div>
+
+            {/* PREDICTIONS */}
 
             <div className="rounded-xl bg-zinc-900 p-3 text-center md:p-4">
 
@@ -964,6 +955,13 @@ export default function Home() {
                   fixture,
                   index
                 ) => {
+
+                  /*
+                   * Completed fixtures are always locked.
+                   *
+                   * QA mode can bypass the normal
+                   * deadline lock when explicitly enabled.
+                   */
 
                   const locked =
                     fixture.status ===
@@ -1139,6 +1137,8 @@ export default function Home() {
           </button>
         )}
 
+        {/* ERROR */}
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-500 bg-red-900 p-3 text-center">
 
@@ -1238,6 +1238,8 @@ export default function Home() {
                 }`}
               >
 
+                {/* RESULTS */}
+
                 <div className="rounded-xl border border-green-700 bg-green-900/20 p-4 text-center">
                   <p className="text-sm text-green-300">
                     ✅ Results
@@ -1250,6 +1252,8 @@ export default function Home() {
                     }
                   </p>
                 </div>
+
+                {/* EXACT */}
 
                 <div className="rounded-xl border border-yellow-500 bg-yellow-500/10 p-4 text-center">
                   <p className="text-sm text-yellow-300">
@@ -1264,6 +1268,8 @@ export default function Home() {
                   </p>
                 </div>
 
+                {/* FTTS */}
+
                 <div className="rounded-xl border border-blue-700 bg-blue-900/20 p-4 text-center">
                   <p className="text-sm text-blue-300">
                     ⚽ FTTS
@@ -1276,6 +1282,8 @@ export default function Home() {
                     }
                   </p>
                 </div>
+
+                {/* BONUS */}
 
                 {activeCompetition.monthlyWinnerEnabled && (
                   <div className="rounded-xl border border-purple-700 bg-purple-900/20 p-4 text-center">

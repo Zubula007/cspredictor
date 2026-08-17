@@ -24,88 +24,119 @@ type CompetitionContextType = {
 const CompetitionContext =
   createContext<CompetitionContextType | null>(null);
 
-const ACTIVE_ROUNDS_KEY = "csp-active-rounds";
-
-function getSavedRounds(): Record<string, number> {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const saved = localStorage.getItem(ACTIVE_ROUNDS_KEY);
-
-  if (!saved) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(saved);
-
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      !Array.isArray(parsed)
-    ) {
-      return parsed;
-    }
-
-    return {};
-  } catch {
-    return {};
-  }
-}
-
-function saveRounds(rounds: Record<string, number>) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  localStorage.setItem(
-    ACTIVE_ROUNDS_KEY,
-    JSON.stringify(rounds)
-  );
-}
-
 export function CompetitionProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  // Always start with Betway on the first render.
-  // This keeps server and client HTML identical.
+  /*
+   * ============================================================
+   * ACTIVE COMPETITION
+   * ============================================================
+   *
+   * Always start with Betway on the first render.
+   * This keeps server and client HTML identical.
+   */
+
   const [activeCompetition, setActiveCompetitionState] =
-    useState(() =>
+    useState<CompetitionInfo>(() =>
       competitionService.getCompetition("BET")
     );
 
-  const [competitions] = useState<CompetitionInfo[]>(
-    () => competitionService.getAllCompetitions()
-  );
+  /*
+   * ============================================================
+   * AVAILABLE COMPETITIONS
+   * ============================================================
+   */
 
-  // Round 1 is the safe initial value.
+  const [competitions] =
+    useState<CompetitionInfo[]>(() =>
+      competitionService.getAllCompetitions()
+    );
+
+  /*
+   * ============================================================
+   * ACTIVE ROUND
+   * ============================================================
+   *
+   * Round 1 is only the safe initial render value.
+   *
+   * After hydration, the real active round is loaded
+   * from Supabase through competitionService.
+   *
+   * IMPORTANT:
+   *
+   * We no longer use localStorage for active rounds.
+   *
+   * Supabase competitions.active_round is now the
+   * single source of truth for ALL users.
+   */
+
   const [activeRound, setActiveRoundState] =
     useState<number>(1);
 
-  // After hydration, load saved competition and round.
+  /*
+   * ============================================================
+   * INITIAL LOAD
+   * ============================================================
+   */
+
   useEffect(() => {
-    const savedCompetition =
-      competitionService.getActiveCompetition();
+    let cancelled = false;
 
-    setActiveCompetitionState(savedCompetition);
+    async function loadInitialState() {
+      const savedCompetition =
+        competitionService.getActiveCompetition();
 
-    const savedRounds = getSavedRounds();
+      if (cancelled) {
+        return;
+      }
 
-    const savedRound =
-      savedRounds[savedCompetition.id];
+      setActiveCompetitionState(
+        savedCompetition
+      );
 
-    setActiveRoundState(
-      typeof savedRound === "number" &&
-        savedRound >= 1
-        ? savedRound
-        : 1
-    );
+      /*
+       * Load the GLOBAL active round from Supabase.
+       */
+
+      const savedRound =
+        await competitionService.getActiveRound(
+          savedCompetition.id
+        );
+
+      if (cancelled) {
+        return;
+      }
+
+      setActiveRoundState(
+        Number.isInteger(savedRound) &&
+          savedRound >= 1
+          ? savedRound
+          : 1
+      );
+    }
+
+    loadInitialState();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function setActiveCompetition(
+  /*
+   * ============================================================
+   * CHANGE ACTIVE COMPETITION
+   * ============================================================
+   *
+   * Competition selection remains local to the user's
+   * current app session.
+   *
+   * When competition changes, we then load that competition's
+   * GLOBAL active round from Supabase.
+   */
+
+  async function changeActiveCompetition(
     competitionId: string
   ) {
     const competition =
@@ -113,41 +144,78 @@ export function CompetitionProvider({
         competitionId
       );
 
-    setActiveCompetitionState(competition);
+    setActiveCompetitionState(
+      competition
+    );
 
-    const savedRounds = getSavedRounds();
+    /*
+     * Load the active round belonging to
+     * the newly selected competition.
+     */
 
-    const savedRound =
-      savedRounds[competition.id];
+    const round =
+      await competitionService.getActiveRound(
+        competition.id
+      );
 
     setActiveRoundState(
-      typeof savedRound === "number" &&
-        savedRound >= 1
-        ? savedRound
+      Number.isInteger(round) &&
+        round >= 1
+        ? round
         : 1
     );
   }
 
-  function setActiveRound(round: number) {
-    if (!Number.isInteger(round) || round < 1) {
+  /*
+   * ============================================================
+   * SET ACTIVE ROUND
+   * ============================================================
+   *
+   * This is primarily used by Admin.
+   *
+   * The selected round is written to Supabase.
+   *
+   * Once saved, every user reading the competition
+   * receives the same active round.
+   */
+
+  async function setActiveRound(
+    round: number
+  ) {
+    if (
+      !Number.isInteger(round) ||
+      round < 1
+    ) {
       return;
     }
 
-    const rounds = getSavedRounds();
+    const savedRound =
+      await competitionService.setActiveRound(
+        activeCompetition.id,
+        round
+      );
 
-    rounds[activeCompetition.id] = round;
-
-    saveRounds(rounds);
-
-    setActiveRoundState(round);
+    setActiveRoundState(
+      Number.isInteger(savedRound) &&
+        savedRound >= 1
+        ? savedRound
+        : round
+    );
   }
+
+  /*
+   * ============================================================
+   * CONTEXT
+   * ============================================================
+   */
 
   return (
     <CompetitionContext.Provider
       value={{
         activeCompetition,
         competitions,
-        setActiveCompetition,
+        setActiveCompetition:
+          changeActiveCompetition,
         activeRound,
         setActiveRound,
       }}

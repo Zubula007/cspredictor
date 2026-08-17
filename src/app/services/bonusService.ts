@@ -3,39 +3,50 @@ import predictionRepository from "../repositories/predictionRepository";
 import fixtureRepository from "../repositories/fixtureRepository";
 
 class BonusService {
-  async recalculateRound(round: number): Promise<void> {
+  async recalculateRound(
+    round: number
+  ): Promise<void> {
     // Remove any existing bonus for this round
     bonusRepository.removeRoundBonus(round);
 
     // Get all fixtures in this round
     const fixtures =
-      await fixtureRepository.getByRound(round);
+      await fixtureRepository.getByRound(
+        round
+      );
 
     // Only continue if every fixture has been published
-    const allPublished = fixtures.every(
-      (fixture) => fixture.published
-    );
+    const allPublished =
+      fixtures.length > 0 &&
+      fixtures.every(
+        (fixture) =>
+          fixture.published
+      );
 
     if (!allPublished) {
       return;
     }
 
     // Calculate each player's points for this round
-    const totals = new Map<string, number>();
+    const totals =
+      new Map<string, number>();
 
     for (const fixture of fixtures) {
       const predictions =
-        predictionRepository.getByFixture(
+        await predictionRepository.getByFixture(
           fixture.id
         );
 
       for (const prediction of predictions) {
         const current =
-          totals.get(prediction.playerId) ?? 0;
+          totals.get(
+            prediction.playerId
+          ) ?? 0;
 
         totals.set(
           prediction.playerId,
-          current + (prediction.points ?? 0)
+          current +
+            (prediction.points ?? 0)
         );
       }
     }
@@ -45,15 +56,21 @@ class BonusService {
     }
 
     // Highest round score
-    const highestScore = Math.max(
-      ...Array.from(totals.values())
-    );
+    const highestScore =
+      Math.max(
+        ...Array.from(
+          totals.values()
+        )
+      );
 
     // Players sharing highest score
     const winners =
-      Array.from(totals.entries()).filter(
+      Array.from(
+        totals.entries()
+      ).filter(
         ([, points]) =>
-          points === highestScore
+          points ===
+          highestScore
       );
 
     // No bonus if tied
@@ -65,9 +82,14 @@ class BonusService {
 
     bonusRepository.save({
       id: `ROUND-${round}`,
-      playerId: winner[0],
+
+      playerId:
+        winner[0],
+
       type: "ROUND",
+
       round,
+
       points: 1,
     });
 
@@ -77,6 +99,7 @@ class BonusService {
   }
 }
 
-const bonusService = new BonusService();
+const bonusService =
+  new BonusService();
 
 export default bonusService;

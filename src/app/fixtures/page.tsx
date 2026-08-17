@@ -56,9 +56,14 @@ export default function MatchCentrePage() {
         });
 
       setFixtures(loadedFixtures);
-      setPredictions(predictionRepository.getAll());
 
-      const currentPlayer = authService.getCurrentPlayer();
+const loadedPredictions =
+  await predictionRepository.getAll();
+
+setPredictions(loadedPredictions);
+
+const currentPlayer =
+  authService.getCurrentPlayer();
 
       if (currentPlayer) {
         setLoggedInPlayerId(currentPlayer.id);
@@ -1842,4 +1847,5 @@ export default function MatchCentrePage() {
     </main>
   );
 }
+
 

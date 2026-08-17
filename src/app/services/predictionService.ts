@@ -13,30 +13,45 @@ export type ScoreFixtureSummary = {
 };
 
 class PredictionService {
-  getPredictions(): Prediction[] {
+  async getPredictions(): Promise<
+    Prediction[]
+  > {
     return predictionRepository.getAll();
   }
 
-  getPlayerPredictions(playerId: string): Prediction[] {
-    return predictionRepository.getByPlayer(playerId);
+  async getPlayerPredictions(
+    playerId: string
+  ): Promise<Prediction[]> {
+    return predictionRepository.getByPlayer(
+      playerId
+    );
   }
 
-  getFixturePredictions(fixtureId: string): Prediction[] {
-    return predictionRepository.getByFixture(fixtureId);
+  async getFixturePredictions(
+    fixtureId: string
+  ): Promise<Prediction[]> {
+    return predictionRepository.getByFixture(
+      fixtureId
+    );
   }
 
-  savePrediction(prediction: Prediction): void {
-    predictionRepository.save(prediction);
+  async savePrediction(
+    prediction: Prediction
+  ): Promise<void> {
+    await predictionRepository.save(
+      prediction
+    );
   }
 
-  savePlayerPrediction(
+  async savePlayerPrediction(
     playerId: string,
     fixtureId: string,
     homeScore: number,
     awayScore: number,
-    firstTeamToScore: Prediction["firstTeamToScore"]
-  ): void {
-    this.savePrediction({
+    firstTeamToScore:
+      Prediction["firstTeamToScore"]
+  ): Promise<void> {
+    await this.savePrediction({
       id: `${playerId}-${fixtureId}`,
 
       playerId,
@@ -49,9 +64,11 @@ class PredictionService {
 
       firstTeamToScore,
 
-      submittedAt: new Date().toISOString(),
+      submittedAt:
+        new Date().toISOString(),
 
-      status: PredictionStatus.SUBMITTED,
+      status:
+        PredictionStatus.SUBMITTED,
 
       locked: false,
 
@@ -72,41 +89,46 @@ class PredictionService {
     fixture: Fixture
   ) {
     return scorePrediction({
-      predictedHomeScore: prediction.homeScore,
+      predictedHomeScore:
+        prediction.homeScore,
 
-      predictedAwayScore: prediction.awayScore,
+      predictedAwayScore:
+        prediction.awayScore,
 
       predictedFirstTeamToScore:
         prediction.firstTeamToScore,
 
-      officialHomeScore: fixture.homeScore ?? 0,
+      officialHomeScore:
+        fixture.homeScore ?? 0,
 
-      officialAwayScore: fixture.awayScore ?? 0,
+      officialAwayScore:
+        fixture.awayScore ?? 0,
 
       officialFirstTeamToScore:
         fixture.firstTeamToScore!,
     });
   }
 
-  scoreFixture(
+  async scoreFixture(
     fixture: Fixture
-  ): ScoreFixtureSummary {
-
+  ): Promise<ScoreFixtureSummary> {
     const predictions =
-      predictionRepository.getByFixture(fixture.id);
+      await predictionRepository.getByFixture(
+        fixture.id
+      );
 
     let predictionsScored = 0;
     let highestScore = 0;
     let totalPoints = 0;
 
     for (const prediction of predictions) {
+      const result =
+        this.scorePrediction(
+          prediction,
+          fixture
+        );
 
-      const result = this.scorePrediction(
-        prediction,
-        fixture
-      );
-
-      predictionRepository.updateScoredPrediction(
+      await predictionRepository.updateScoredPrediction(
         prediction.id,
         result.points,
         result.correctResult,
@@ -118,8 +140,12 @@ class PredictionService {
 
       totalPoints += result.points;
 
-      if (result.points > highestScore) {
-        highestScore = result.points;
+      if (
+        result.points >
+        highestScore
+      ) {
+        highestScore =
+          result.points;
       }
     }
 
@@ -141,6 +167,7 @@ class PredictionService {
   }
 }
 
-const predictionService = new PredictionService();
+const predictionService =
+  new PredictionService();
 
 export default predictionService;

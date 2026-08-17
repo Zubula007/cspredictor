@@ -27,7 +27,7 @@ type FTTSOption =
   | "NONE"
   | null;
 
-type Prediction = {
+type UIPrediction = {
   homeTeam: string;
   awayTeam: string;
   homeScore: number;
@@ -78,6 +78,9 @@ export default function Home() {
   const [activeRound, setActiveRound] =
     useState(1);
 
+  const [predictions, setPredictions] =
+    useState<UIPrediction[]>([]);
+
   const fixtureRefs =
     useRef<(HTMLDivElement | null)[]>([]);
 
@@ -117,12 +120,29 @@ export default function Home() {
         fixture.round === activeRound
     );
 
-  const [predictions, setPredictions] =
-    useState<Prediction[]>([]);
+  /*
+   * A stable key prevents the prediction-loading
+   * effect from running on every render.
+   */
+
+  const fixtureKey =
+    competitionFixtures
+      .map((fixture) => fixture.id)
+      .join("|");
 
   /*
-   * Keep predictions aligned with
-   * the active competition AND active round.
+   * ============================================================
+   * LOAD PLAYER PREDICTIONS
+   * ============================================================
+   *
+   * IMPORTANT:
+   * predictionService.getPlayerPredictions()
+   * is asynchronous after the Supabase migration.
+   *
+   * We therefore ALWAYS await it inside an effect.
+   *
+   * Predictions are matched by fixture ID rather than
+   * array position.
    */
 
   useEffect(() => {
@@ -130,33 +150,207 @@ export default function Home() {
       return;
     }
 
-    const newPredictions: Prediction[] =
-      competitionFixtures.map(
-        (fixture) => ({
-          homeTeam:
-            fixture.homeTeam,
+    async function loadPlayerPredictions() {
+      const player =
+        authService.getCurrentPlayer();
 
-          awayTeam:
-            fixture.awayTeam,
+      /*
+       * Start with blank predictions for every
+       * fixture in the current round.
+       */
 
-          homeScore: 0,
+      const blankPredictions: UIPrediction[] =
+        competitionFixtures.map(
+          (fixture) => ({
+            homeTeam:
+              fixture.homeTeam,
 
-          awayScore: 0,
+            awayTeam:
+              fixture.awayTeam,
 
-          scoreSelected: false,
+            homeScore: 0,
 
-          firstTeamToScore: null,
-        })
-      );
+            awayScore: 0,
 
-    setPredictions(
-      newPredictions
-    );
+            scoreSelected: false,
+
+            firstTeamToScore: null,
+          })
+        );
+
+      /*
+       * If nobody is logged in, show blank
+       * predictions.
+       */
+
+      if (!player) {
+        setPredictions(
+          blankPredictions
+        );
+
+        return;
+      }
+
+      try {
+        /*
+         * THIS IS THE IMPORTANT FIX.
+         *
+         * Await the asynchronous prediction
+         * repository/service call.
+         */
+
+        const savedPredictions =
+          await predictionService.getPlayerPredictions(
+            player.id
+          );
+
+        /*
+         * Restore predictions by fixture ID.
+         *
+         * This prevents a submitted 2-1 prediction
+         * from displaying as 0-0.
+         */
+
+        const restoredPredictions =
+          blankPredictions.map(
+            (
+              blankPrediction,
+              index
+            ) => {
+              const fixture =
+                competitionFixtures[index];
+
+              if (!fixture) {
+                return blankPrediction;
+              }
+
+              const saved =
+                savedPredictions.find(
+                  (prediction) =>
+                    prediction.fixtureId ===
+                    fixture.id
+                );
+
+              if (!saved) {
+                return blankPrediction;
+              }
+
+              let firstTeamToScore: FTTSOption =
+                null;
+
+              if (
+                saved.firstTeamToScore ===
+                "Home"
+              ) {
+                firstTeamToScore =
+                  "HOME";
+              } else if (
+                saved.firstTeamToScore ===
+                "Away"
+              ) {
+                firstTeamToScore =
+                  "AWAY";
+              } else if (
+                saved.firstTeamToScore ===
+                "None"
+              ) {
+                firstTeamToScore =
+                  "NONE";
+              }
+
+              return {
+                homeTeam:
+                  fixture.homeTeam,
+
+                awayTeam:
+                  fixture.awayTeam,
+
+                homeScore:
+                  saved.homeScore,
+
+                awayScore:
+                  saved.awayScore,
+
+                scoreSelected:
+                  true,
+
+                firstTeamToScore,
+              };
+            }
+          );
+
+        setPredictions(
+          restoredPredictions
+        );
+
+        /*
+         * Keep local UI storage in sync as well.
+         */
+
+        localStorage.setItem(
+          UI_PREDICTIONS_KEY,
+          JSON.stringify(
+            restoredPredictions
+          )
+        );
+      } catch (loadError) {
+        console.error(
+          "Unable to load player predictions:",
+          loadError
+        );
+
+        /*
+         * Fall back to local UI predictions
+         * if the database request fails.
+         */
+
+        const savedLocal =
+          localStorage.getItem(
+            UI_PREDICTIONS_KEY
+          );
+
+        if (savedLocal) {
+          try {
+            const parsed =
+              JSON.parse(
+                savedLocal
+              );
+
+            if (
+              Array.isArray(parsed)
+            ) {
+              setPredictions(
+                parsed
+              );
+
+              return;
+            }
+          } catch {
+            console.error(
+              "Unable to load local UI predictions."
+            );
+          }
+        }
+
+        setPredictions(
+          blankPredictions
+        );
+      }
+    }
+
+    loadPlayerPredictions();
   }, [
+    mounted,
     activeCompetition.id,
     activeRound,
-    mounted,
+    fixtureKey,
   ]);
+
+  /*
+   * ============================================================
+   * UPDATE PREDICTION
+   * ============================================================
+   */
 
   const updatePrediction = (
     index: number,
@@ -258,7 +452,7 @@ export default function Home() {
    * ============================================================
    */
 
-  const confirmSubmission = () => {
+  const confirmSubmission = async () => {
     const player =
       authService.getCurrentPlayer();
 
@@ -272,19 +466,33 @@ export default function Home() {
       return;
     }
 
-    predictions.forEach(
-      (prediction, index) => {
+    try {
+      /*
+       * Save each prediction.
+       *
+       * await is safe whether the service currently
+       * returns void or Promise<void>.
+       */
+
+      for (
+        let index = 0;
+        index < predictions.length;
+        index++
+      ) {
+        const prediction =
+          predictions[index];
+
         const fixture =
           competitionFixtures[index];
 
         if (!fixture) {
-          return;
+          continue;
         }
 
         if (
           !prediction.scoreSelected
         ) {
-          return;
+          continue;
         }
 
         if (
@@ -293,10 +501,10 @@ export default function Home() {
           fixture.status ===
             "Cancelled"
         ) {
-          return;
+          continue;
         }
 
-        predictionService.savePlayerPrediction(
+        await predictionService.savePlayerPrediction(
           player.id,
           fixture.id,
           prediction.homeScore,
@@ -310,36 +518,75 @@ export default function Home() {
             : "None"
         );
       }
-    );
 
-    const now = new Date();
+      /*
+       * Save the UI representation too.
+       */
 
-    const formatted =
-      now.toLocaleString(
-        "en-ZA",
-        {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }
+      localStorage.setItem(
+        UI_PREDICTIONS_KEY,
+        JSON.stringify(
+          predictions
+        )
       );
 
-    setSubmitted(true);
-    setSubmittedAt(formatted);
+      const now =
+        new Date();
 
-    localStorage.setItem(
-      "csp-submitted",
-      "true"
-    );
+      const formatted =
+        now.toLocaleString(
+          "en-ZA",
+          {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        );
 
-    localStorage.setItem(
-      "csp-submittedAt",
-      formatted
-    );
+      setSubmitted(true);
 
-    setShowConfirmation(false);
+      setSubmittedAt(
+        formatted
+      );
+
+      localStorage.setItem(
+        "csp-submitted",
+        "true"
+      );
+
+      localStorage.setItem(
+        "csp-submittedAt",
+        formatted
+      );
+
+      setShowConfirmation(false);
+
+      /*
+       * Refresh leaderboard after submission.
+       */
+
+      const updatedLeaderboard =
+        await leaderboardService.getLeaderboard(
+          activeCompetition.id
+        );
+
+      setLeaderboard(
+        updatedLeaderboard
+      );
+    } catch (submissionError) {
+      console.error(
+        "Unable to save predictions:",
+        submissionError
+      );
+
+      setError(
+        "Unable to save your predictions. Please try again."
+      );
+
+      setShowConfirmation(false);
+    }
   };
 
   /*
@@ -429,16 +676,29 @@ export default function Home() {
       );
     }
 
+    /*
+     * Local predictions are only used as a
+     * temporary fallback. Database predictions
+     * are loaded by the async effect above.
+     */
+
     if (savedPredictions) {
       try {
-        setPredictions(
+        const parsed =
           JSON.parse(
             savedPredictions
-          )
-        );
+          );
+
+        if (
+          Array.isArray(parsed)
+        ) {
+          setPredictions(
+            parsed
+          );
+        }
       } catch {
         console.error(
-          "Unable to load saved predictions."
+          "Unable to load saved UI predictions."
         );
       }
     }
@@ -491,10 +751,6 @@ export default function Home() {
    * ============================================================
    * LEADERBOARD
    * ============================================================
-   *
-   * leaderboardService.getLeaderboard()
-   * is now async, so we must await the
-   * returned Promise before updating state.
    */
 
   useEffect(() => {
@@ -503,14 +759,21 @@ export default function Home() {
     }
 
     async function loadLeaderboard() {
-      const updatedLeaderboard =
-        await leaderboardService.getLeaderboard(
-          activeCompetition.id
-        );
+      try {
+        const updatedLeaderboard =
+          await leaderboardService.getLeaderboard(
+            activeCompetition.id
+          );
 
-      setLeaderboard(
-        updatedLeaderboard
-      );
+        setLeaderboard(
+          updatedLeaderboard
+        );
+      } catch (leaderboardError) {
+        console.error(
+          "Unable to load leaderboard:",
+          leaderboardError
+        );
+      }
     }
 
     loadLeaderboard();
@@ -524,7 +787,7 @@ export default function Home() {
 
   /*
    * ============================================================
-   * RESET UI WHEN SWITCHING COMPETITION
+   * RESET UI WHEN SWITCHING COMPETITION / ROUND
    * ============================================================
    */
 
@@ -542,6 +805,12 @@ export default function Home() {
     activeRound,
     mounted,
   ]);
+
+  /*
+   * ============================================================
+   * RENDER
+   * ============================================================
+   */
 
   if (!mounted) {
     return null;
